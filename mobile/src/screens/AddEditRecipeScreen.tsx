@@ -66,7 +66,7 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
       Alert.alert("Recipe name is required");
       return;
     }
-    const cleanIngredients = ingredients.filter((i) => i.name.trim().length > 0);
+    const cleanIngredients = ingredients.filter((i) => i.name.trim().length > 0 && i.quantity.trim().length > 0);
     saveMutation.mutate({
       name: name.trim(),
       mealType,
