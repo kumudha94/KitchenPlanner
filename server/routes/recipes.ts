@@ -9,7 +9,12 @@ recipesRouter.get("/", async (_req, res) => {
 });
 
 recipesRouter.get("/:id", async (req, res) => {
-  const recipe = await recipeStorage.getRecipe(Number(req.params.id));
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid recipe id" });
+    return;
+  }
+  const recipe = await recipeStorage.getRecipe(id);
   if (!recipe) {
     res.status(404).json({ error: "Recipe not found" });
     return;
@@ -42,7 +47,12 @@ recipesRouter.patch("/:id", async (req, res) => {
 });
 
 recipesRouter.delete("/:id", async (req, res) => {
-  const deleted = await recipeStorage.deleteRecipe(Number(req.params.id));
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid recipe id" });
+    return;
+  }
+  const deleted = await recipeStorage.deleteRecipe(id);
   if (!deleted) {
     res.status(404).json({ error: "Recipe not found" });
     return;
