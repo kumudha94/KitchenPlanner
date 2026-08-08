@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, serial, varchar, text, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, jsonb, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -38,3 +38,22 @@ export type InsertRecipe = z.infer<typeof insertRecipeSchema>;
 export type Recipe = Omit<typeof recipes.$inferSelect, "ingredients"> & {
   ingredients: RecipeIngredient[];
 };
+
+export const mealPlanEntries = pgTable(
+  "meal_plan_entries",
+  {
+    id: serial("id").primaryKey(),
+    date: varchar("date", { length: 10 }).notNull(),
+    slot: varchar("slot", { length: 20 }).notNull(),
+    recipeId: integer("recipe_id").references(() => recipes.id, { onDelete: "set null" }),
+    recipeNameSnapshot: varchar("recipe_name_snapshot", { length: 150 }),
+    note: text("note"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    dateSlotIdx: uniqueIndex("meal_plan_date_slot_idx").on(table.date, table.slot),
+  })
+);
+
+export type MealPlanEntry = typeof mealPlanEntries.$inferSelect;
