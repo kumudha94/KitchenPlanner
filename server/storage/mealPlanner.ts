@@ -16,9 +16,18 @@ export async function getWeek(startDate: string, endDate: string): Promise<MealP
 }
 
 export async function upsertSlot(date: string, slot: string, update: SlotUpdate): Promise<MealPlanEntry> {
+  const [existing] = await db
+    .select()
+    .from(mealPlanEntries)
+    .where(and(eq(mealPlanEntries.date, date), eq(mealPlanEntries.slot, slot)));
+
+  const effectiveRecipeId =
+    update.recipeId !== undefined ? update.recipeId : existing?.recipeId ?? null;
+  const effectiveNote = update.note !== undefined ? update.note : existing?.note ?? null;
+
   let recipeNameSnapshot: string | null = null;
-  if (update.recipeId) {
-    const [recipe] = await db.select().from(recipes).where(eq(recipes.id, update.recipeId));
+  if (effectiveRecipeId !== null && effectiveRecipeId !== undefined) {
+    const [recipe] = await db.select().from(recipes).where(eq(recipes.id, effectiveRecipeId));
     recipeNameSnapshot = recipe?.name ?? null;
   }
 
@@ -27,16 +36,16 @@ export async function upsertSlot(date: string, slot: string, update: SlotUpdate)
     .values({
       date,
       slot,
-      recipeId: update.recipeId ?? null,
+      recipeId: effectiveRecipeId,
       recipeNameSnapshot,
-      note: update.note ?? null,
+      note: effectiveNote,
     })
     .onConflictDoUpdate({
       target: [mealPlanEntries.date, mealPlanEntries.slot],
       set: {
-        recipeId: update.recipeId ?? null,
+        recipeId: effectiveRecipeId,
         recipeNameSnapshot,
-        note: update.note ?? null,
+        note: effectiveNote,
         updatedAt: new Date(),
       },
     })
