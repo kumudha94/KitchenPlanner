@@ -6,8 +6,10 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import RecipesScreen from "./src/screens/RecipesScreen";
+import AddEditRecipeScreen from "./src/screens/AddEditRecipeScreen";
 import PlannerScreen from "./src/screens/PlannerScreen";
 import GroceryScreen from "./src/screens/GroceryScreen";
 import PrepLogScreen from "./src/screens/PrepLogScreen";
@@ -24,6 +26,27 @@ export type TabParamList = {
   Grocery: undefined;
   PrepLog: undefined;
 };
+
+export type RecipesStackParamList = {
+  RecipesList: undefined;
+  AddEditRecipe: { recipeId?: number };
+};
+
+const RecipesStack = createNativeStackNavigator<RecipesStackParamList>();
+
+function RecipesStackNavigator() {
+  return (
+    <RecipesStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#2E7D32" },
+        headerTintColor: "#fff",
+      }}
+    >
+      <RecipesStack.Screen name="RecipesList" component={RecipesScreen} options={{ title: "Recipes" }} />
+      <RecipesStack.Screen name="AddEditRecipe" component={AddEditRecipeScreen} />
+    </RecipesStack.Navigator>
+  );
+}
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -45,7 +68,7 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Planner" component={PlannerScreen} options={{ title: "Planner" }} />
-      <Tab.Screen name="Recipes" component={RecipesScreen} options={{ title: "Recipes" }} />
+      <Tab.Screen name="Recipes" component={RecipesStackNavigator} options={{ title: "Recipes", headerShown: false }} />
       <Tab.Screen name="Grocery" component={GroceryScreen} options={{ title: "Grocery" }} />
       <Tab.Screen name="PrepLog" component={PrepLogScreen} options={{ title: "Prep Log" }} />
     </Tab.Navigator>
