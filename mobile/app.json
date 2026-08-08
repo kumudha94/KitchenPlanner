@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "KitchenPlanner",
+    "slug": "kitchen-planner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.kitchenplanner.app"
+    }
+  }
+}
