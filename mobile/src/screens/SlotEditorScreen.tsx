@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../lib/api";
 import type { MealPlanEntry, MealType, Recipe } from "../lib/types";
 import type { PlannerStackParamList } from "../../App";
-import { colors, radii, spacing, type } from "../theme";
+import { useColors, radii, spacing, type, type ThemeColors } from "../theme";
 import RecipeCard from "../components/RecipeCard";
 
 type Props = NativeStackScreenProps<PlannerStackParamList, "SlotEditor">;
@@ -20,6 +20,8 @@ const CATEGORIES: { key: MealType | "all"; label: string }[] = [
 ];
 
 export default function SlotEditorScreen({ route, navigation }: Props) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { date, slot, note: initialNote } = route.params;
   const queryClient = useQueryClient();
 
@@ -156,7 +158,8 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
   label: { ...type.label, color: colors.textSecondary, marginBottom: spacing.sm },
 
@@ -213,4 +216,4 @@ const styles = StyleSheet.create({
 
   clearButton: { alignItems: "center", paddingVertical: 8 },
   clearButtonText: { color: colors.danger, fontSize: 14, fontWeight: "600" },
-});
+  });

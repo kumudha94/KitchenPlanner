@@ -1,10 +1,11 @@
 import "react-native-gesture-handler";
 import { useCallback } from "react";
-import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
+import { useColorScheme } from "react-native";
+import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -18,7 +19,7 @@ import SlotEditorScreen from "./src/screens/SlotEditorScreen";
 import type { MealSlot } from "./src/lib/types";
 import GroceryScreen from "./src/screens/GroceryScreen";
 import PrepLogScreen from "./src/screens/PrepLogScreen";
-import { colors } from "./src/theme";
+import { useColors } from "./src/theme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -40,18 +41,19 @@ export type RecipesStackParamList = {
   AddEditRecipe: { recipeId?: number };
 };
 
-const minimalHeader = {
-  headerStyle: { backgroundColor: colors.background },
-  headerShadowVisible: false,
-  headerTintColor: colors.textPrimary,
-  headerTitleStyle: { fontWeight: "700" as const, fontSize: 17 },
-};
-
 const RecipesStack = createNativeStackNavigator<RecipesStackParamList>();
 
 function RecipesStackNavigator() {
+  const colors = useColors();
   return (
-    <RecipesStack.Navigator screenOptions={minimalHeader}>
+    <RecipesStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: { fontWeight: "700", fontSize: 17 },
+      }}
+    >
       <RecipesStack.Screen name="RecipesList" component={RecipesScreen} options={{ title: "Recipes" }} />
       <RecipesStack.Screen name="AddEditRecipe" component={AddEditRecipeScreen} />
     </RecipesStack.Navigator>
@@ -66,8 +68,16 @@ export type PlannerStackParamList = {
 const PlannerStack = createNativeStackNavigator<PlannerStackParamList>();
 
 function PlannerStackNavigator() {
+  const colors = useColors();
   return (
-    <PlannerStack.Navigator screenOptions={minimalHeader}>
+    <PlannerStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: { fontWeight: "700", fontSize: 17 },
+      }}
+    >
       <PlannerStack.Screen name="PlannerWeek" component={PlannerScreen} options={{ headerShown: false }} />
       <PlannerStack.Screen
         name="SlotEditor"
@@ -81,6 +91,7 @@ function PlannerStackNavigator() {
 const Tab = createBottomTabNavigator<TabParamList>();
 
 function TabNavigator() {
+  const colors = useColors();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -103,7 +114,10 @@ function TabNavigator() {
           backgroundColor: colors.surface,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-        ...minimalHeader,
+        headerStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: { fontWeight: "700", fontSize: 17 },
       })}
     >
       <Tab.Screen name="Planner" component={PlannerStackNavigator} options={{ title: "Planner", headerShown: false }} />
@@ -114,19 +128,9 @@ function TabNavigator() {
   );
 }
 
-const navigationTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: colors.accent,
-    background: colors.background,
-    card: colors.surface,
-    text: colors.textPrimary,
-    border: colors.border,
-  },
-};
-
 export default function App() {
+  const colors = useColors();
+  const scheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts(Ionicons.font);
 
   const onLayoutRootView = useCallback(async () => {
@@ -139,6 +143,19 @@ export default function App() {
     return null;
   }
 
+  const navBase = scheme === "dark" ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...navBase,
+    colors: {
+      ...navBase.colors,
+      primary: colors.accent,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.border,
+    },
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <QueryClientProvider client={queryClient}>
@@ -146,7 +163,7 @@ export default function App() {
           <NavigationContainer theme={navigationTheme}>
             <TabNavigator />
           </NavigationContainer>
-          <StatusBar style="dark" />
+          <StatusBar style="auto" />
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

@@ -1,20 +1,14 @@
+import { useMemo } from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { Recipe, MealType } from "../lib/types";
-import { colors, radii, spacing, shadow } from "../theme";
+import { useColors, useShadow, radii, spacing, type ThemeColors } from "../theme";
 
 const MEAL_ICON: Record<MealType, keyof typeof Ionicons.glyphMap> = {
   breakfast: "sunny",
   lunch: "restaurant",
   snack: "cafe",
   dinner: "moon",
-};
-
-const MEAL_COLOR: Record<MealType, string> = {
-  breakfast: colors.breakfast,
-  lunch: colors.lunch,
-  snack: colors.snack,
-  dinner: colors.dinner,
 };
 
 type Props = {
@@ -25,7 +19,17 @@ type Props = {
 };
 
 export default function RecipeCard({ recipe, onPress, selected, elevated = true }: Props) {
-  const tint = recipe.mealType ? MEAL_COLOR[recipe.mealType] : colors.accent;
+  const colors = useColors();
+  const shadow = useShadow();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const mealColor: Record<MealType, string> = {
+    breakfast: colors.breakfast,
+    lunch: colors.lunch,
+    snack: colors.snack,
+    dinner: colors.dinner,
+  };
+  const tint = recipe.mealType ? mealColor[recipe.mealType] : colors.accent;
   const icon = recipe.mealType ? MEAL_ICON[recipe.mealType] : "restaurant";
 
   return (
@@ -70,25 +74,26 @@ export default function RecipeCard({ recipe, onPress, selected, elevated = true 
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardSelected: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
-  thumb: { width: 48, height: 48, borderRadius: radii.sm, marginRight: spacing.sm },
-  thumbFallback: { justifyContent: "center", alignItems: "center" },
-  info: { flex: 1, marginRight: spacing.xs },
-  name: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
-  metaRow: { flexDirection: "row", alignItems: "center", marginTop: 4, gap: 8, flexWrap: "wrap" },
-  metaItem: { flexDirection: "row", alignItems: "center", gap: 3 },
-  metaText: { fontSize: 12, color: colors.textSecondary, fontWeight: "500" },
-  tag: { backgroundColor: colors.surfaceAlt, borderRadius: radii.full, paddingHorizontal: 8, paddingVertical: 2 },
-  tagText: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      padding: spacing.sm,
+      marginBottom: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    cardSelected: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+    thumb: { width: 48, height: 48, borderRadius: radii.sm, marginRight: spacing.sm },
+    thumbFallback: { justifyContent: "center", alignItems: "center" },
+    info: { flex: 1, marginRight: spacing.xs },
+    name: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
+    metaRow: { flexDirection: "row", alignItems: "center", marginTop: 4, gap: 8, flexWrap: "wrap" },
+    metaItem: { flexDirection: "row", alignItems: "center", gap: 3 },
+    metaText: { fontSize: 12, color: colors.textSecondary, fontWeight: "500" },
+    tag: { backgroundColor: colors.surfaceAlt, borderRadius: radii.full, paddingHorizontal: 8, paddingVertical: 2 },
+    tagText: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
+  });

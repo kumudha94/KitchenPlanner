@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { colors, radii, spacing, type } from "../theme";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useColors, radii, spacing, type, type ThemeColors } from "../theme";
 
 const STEPS = [
   { key: "plan", label: "Plan", icon: "today-outline" as const },
@@ -17,6 +18,9 @@ type Props = {
 };
 
 export default function WorkflowTeaser({ active, icon, title, description }: Props) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <View style={styles.stepsRow}>
@@ -47,34 +51,35 @@ export default function WorkflowTeaser({ active, icon, title, description }: Pro
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
-  stepsRow: { flexDirection: "row", alignItems: "flex-start", marginTop: spacing.sm },
-  stepWrap: { flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "center" },
-  stepItem: { alignItems: "center", gap: 6, width: 56 },
-  stepDot: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.full,
-    backgroundColor: colors.surfaceAlt,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  stepDotActive: { backgroundColor: colors.accent },
-  stepLabel: { fontSize: 11, fontWeight: "600", color: colors.textMuted },
-  stepLabelActive: { color: colors.accentDark },
-  connector: { flex: 1, height: 1, backgroundColor: colors.border, marginBottom: 18 },
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
+    stepsRow: { flexDirection: "row", alignItems: "flex-start", marginTop: spacing.sm },
+    stepWrap: { flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "center" },
+    stepItem: { alignItems: "center", gap: 6, width: 56 },
+    stepDot: {
+      width: 32,
+      height: 32,
+      borderRadius: radii.full,
+      backgroundColor: colors.surfaceAlt,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    stepDotActive: { backgroundColor: colors.accent },
+    stepLabel: { fontSize: 11, fontWeight: "600", color: colors.textMuted },
+    stepLabelActive: { color: colors.accentDark },
+    connector: { flex: 1, height: 1, backgroundColor: colors.border, marginBottom: 18 },
 
-  hero: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: spacing.lg },
-  heroIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: radii.full,
-    backgroundColor: colors.accentSoft,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  heroTitle: { ...type.title, color: colors.textPrimary, marginBottom: spacing.xs },
-  heroDescription: { ...type.body, color: colors.textSecondary, textAlign: "center", lineHeight: 21 },
-});
+    hero: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: spacing.lg },
+    heroIcon: {
+      width: 72,
+      height: 72,
+      borderRadius: radii.full,
+      backgroundColor: colors.accentSoft,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: spacing.md,
+    },
+    heroTitle: { ...type.title, color: colors.textPrimary, marginBottom: spacing.xs },
+    heroDescription: { ...type.body, color: colors.textSecondary, textAlign: "center", lineHeight: 21 },
+  });

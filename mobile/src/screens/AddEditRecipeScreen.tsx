@@ -1,18 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, StyleSheet, Alert } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../lib/api";
 import type { InsertRecipe, Recipe, RecipeIngredient, MealType } from "../lib/types";
 import type { RecipesStackParamList } from "../../App";
-import { colors, radii, spacing } from "../theme";
+import { useColors, radii, spacing, type ThemeColors } from "../theme";
 
 type Props = NativeStackScreenProps<RecipesStackParamList, "AddEditRecipe">;
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 
 export default function AddEditRecipeScreen({ route, navigation }: Props) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { recipeId } = route.params;
   const isEdit = recipeId !== undefined;
   const queryClient = useQueryClient();
@@ -247,7 +249,8 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   label: { fontSize: 13, fontWeight: "700", color: colors.textSecondary, marginTop: spacing.md, marginBottom: 6 },
   row: { flexDirection: "row", gap: spacing.sm },
@@ -317,4 +320,4 @@ const styles = StyleSheet.create({
   saveButtonText: { color: colors.white, fontWeight: "700", fontSize: 15 },
   deleteButton: { alignItems: "center", marginTop: spacing.md, marginBottom: spacing.xl },
   deleteButtonText: { color: colors.danger, fontSize: 14, fontWeight: "600" },
-});
+  });

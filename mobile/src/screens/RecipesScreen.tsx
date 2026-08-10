@@ -1,17 +1,19 @@
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, RefreshControl } from "react-native";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../lib/api";
 import type { Recipe } from "../lib/types";
 import type { RecipesStackParamList } from "../../App";
-import { colors, radii, spacing } from "../theme";
+import { useColors, radii, spacing, type ThemeColors } from "../theme";
 import RecipeCard from "../components/RecipeCard";
 
 type Props = NativeStackScreenProps<RecipesStackParamList, "RecipesList">;
 
 export default function RecipesScreen({ navigation }: Props) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const {
     data: recipes,
     isLoading,
@@ -83,7 +85,8 @@ export default function RecipesScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.lg },
   loadingText: { fontSize: 15, color: colors.textSecondary },
@@ -121,4 +124,4 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-});
+  });
