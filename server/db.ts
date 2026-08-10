@@ -15,3 +15,13 @@ export const pool = new Pool({
 });
 
 export const db = drizzle(pool);
+
+// Lightweight, idempotent additive schema sync. This project uses `drizzle-kit push`
+// for schema changes rather than versioned migrations; this covers the case where
+// `db:push` can't reach the database from the dev environment but the deployed
+// server can (e.g. a restrictive dev sandbox network). Safe to run on every boot.
+export async function ensureSchema(): Promise<void> {
+  await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS prep_time_minutes integer`);
+  await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS image_url varchar(500)`);
+}

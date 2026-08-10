@@ -1,17 +1,12 @@
-import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing } from "../theme";
+import WorkflowTeaser from "../components/WorkflowTeaser";
 
 export default function GroceryScreen() {
   return (
-    <View style={styles.container}>
-      <Ionicons name="cart-outline" size={40} color={colors.textMuted} />
-      <Text style={styles.text}>Grocery lists coming soon</Text>
-    </View>
+    <WorkflowTeaser
+      active="shop"
+      icon="cart-outline"
+      title="Your shopping list, built for you"
+      description="Once this ships, your grocery list will build itself from whatever you plan this week — no re-typing."
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background, gap: spacing.sm },
-  text: { fontSize: 15, color: colors.textSecondary },
-});

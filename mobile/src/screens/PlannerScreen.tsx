@@ -1,175 +1,248 @@
 import { useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Image, StyleSheet } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { addWeeks, format, startOfWeek, addDays, isToday } from "date-fns";
+import { addDays, addWeeks, format, isSameDay, isToday, startOfWeek } from "date-fns";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../lib/api";
-import type { MealPlanEntry, MealSlot } from "../lib/types";
+import type { MealPlanEntry, MealSlot, MealType, Recipe } from "../lib/types";
 import type { PlannerStackParamList } from "../../App";
-import { colors, radii, spacing, shadow } from "../theme";
+import { colors, radii, spacing, shadow, type } from "../theme";
 
 type Props = NativeStackScreenProps<PlannerStackParamList, "PlannerWeek">;
 
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "snack", "dinner"];
 
-const SLOT_ICONS: Record<MealSlot, keyof typeof Ionicons.glyphMap> = {
-  breakfast: "sunny-outline",
-  lunch: "restaurant-outline",
-  snack: "cafe-outline",
-  dinner: "moon-outline",
+const SLOT_META: Record<MealType, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> = {
+  breakfast: { icon: "sunny", label: "Breakfast", color: colors.breakfast },
+  lunch: { icon: "restaurant", label: "Lunch", color: colors.lunch },
+  snack: { icon: "cafe", label: "Snack", color: colors.snack },
+  dinner: { icon: "moon", label: "Dinner", color: colors.dinner },
 };
 
 export default function PlannerScreen({ navigation }: Props) {
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(new Date());
 
-  const weekStart = useMemo(
-    () => addWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), weekOffset),
-    [weekOffset]
-  );
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-  const startDate = format(days[0], "yyyy-MM-dd");
-  const endDate = format(days[6], "yyyy-MM-dd");
+  const weekStart = useMemo(() => startOfWeek(selectedDay, { weekStartsOn: 1 }), [selectedDay]);
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const startDate = format(weekDays[0], "yyyy-MM-dd");
+  const endDate = format(weekDays[6], "yyyy-MM-dd");
+  const selectedDateStr = format(selectedDay, "yyyy-MM-dd");
 
-  const { data: entries, isLoading } = useQuery({
+  const { data: entries, isLoading: entriesLoading } = useQuery({
     queryKey: ["meal-plan", startDate, endDate],
     queryFn: () => apiRequest<MealPlanEntry[]>(`/api/meal-plan?start=${startDate}&end=${endDate}`),
   });
 
-  function entryFor(date: string, slot: MealSlot) {
-    return entries?.find((e: MealPlanEntry) => e.date === date && e.slot === slot);
+  const { data: recipes } = useQuery({
+    queryKey: ["recipes"],
+    queryFn: () => apiRequest<Recipe[]>("/api/recipes"),
+  });
+
+  function entryFor(slot: MealSlot) {
+    return entries?.find((e: MealPlanEntry) => e.date === selectedDateStr && e.slot === slot);
+  }
+
+  function recipeFor(entry?: MealPlanEntry) {
+    if (!entry?.recipeId) return undefined;
+    return recipes?.find((r: Recipe) => r.id === entry.recipeId);
+  }
+
+  function dayHasMeals(day: Date) {
+    const d = format(day, "yyyy-MM-dd");
+    return entries?.some((e: MealPlanEntry) => e.date === d && (e.recipeNameSnapshot || e.note));
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.weekHeader}>
-        <TouchableOpacity style={styles.weekArrow} onPress={() => setWeekOffset((w) => w - 1)}>
-          <Ionicons name="chevron-back" size={20} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.weekLabel}>
-          {format(days[0], "MMM d")} – {format(days[6], "MMM d")}
-        </Text>
-        <TouchableOpacity style={styles.weekArrow} onPress={() => setWeekOffset((w) => w + 1)}>
-          <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-      {isLoading ? (
-        <View style={styles.center}>
-          <Text style={styles.loadingText}>Loading plan…</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.topRow}>
+        <Text style={styles.monthLabel}>{format(weekStart, "MMMM yyyy")}</Text>
+        <View style={styles.topRowActions}>
+          {!isSameDay(selectedDay, new Date()) && (
+            <TouchableOpacity style={styles.todayPill} onPress={() => setSelectedDay(new Date())}>
+              <Text style={styles.todayPillText}>Today</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.weekArrow} onPress={() => setSelectedDay((d) => addWeeks(d, -1))}>
+            <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.weekArrow} onPress={() => setSelectedDay((d) => addWeeks(d, 1))}>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
+      </View>
+
+      <View style={styles.dayStrip}>
+        {weekDays.map((day) => {
+          const selected = isSameDay(day, selectedDay);
+          const today = isToday(day);
+          const hasMeals = dayHasMeals(day);
+          return (
+            <TouchableOpacity
+              key={day.toISOString()}
+              style={[styles.dayChip, selected && styles.dayChipSelected]}
+              activeOpacity={0.7}
+              onPress={() => setSelectedDay(day)}
+            >
+              <Text style={[styles.dayChipWeekday, selected && styles.dayChipTextSelected]}>
+                {format(day, "EEEEE")}
+              </Text>
+              <Text style={[styles.dayChipDate, selected && styles.dayChipTextSelected, today && !selected && styles.dayChipToday]}>
+                {format(day, "d")}
+              </Text>
+              <View style={[styles.dayDot, hasMeals && { backgroundColor: selected ? colors.white : colors.accent }]} />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={styles.heroRow}>
+        <Text style={styles.heroTitle}>
+          {isSameDay(selectedDay, new Date()) ? "Today" : format(selectedDay, "EEEE")}
+        </Text>
+        <Text style={styles.heroSubtitle}>{format(selectedDay, "MMMM d, yyyy")}</Text>
+      </View>
+
+      {entriesLoading ? (
+        <Text style={styles.loadingText}>Loading…</Text>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {days.map((day) => {
-            const dateStr = format(day, "yyyy-MM-dd");
-            const today = isToday(day);
+        <View style={styles.slots}>
+          {SLOTS.map((slot) => {
+            const entry = entryFor(slot);
+            const recipe = recipeFor(entry);
+            const meta = SLOT_META[slot];
+            const filled = !!(entry?.recipeNameSnapshot || entry?.note);
+
             return (
-              <View key={dateStr} style={styles.dayCard}>
-                <View style={styles.dayHeaderRow}>
-                  <Text style={styles.dayLabel}>{format(day, "EEEE, MMM d")}</Text>
-                  {today ? (
-                    <View style={styles.todayBadge}>
-                      <Text style={styles.todayBadgeText}>Today</Text>
-                    </View>
-                  ) : null}
+              <TouchableOpacity
+                key={slot}
+                activeOpacity={0.75}
+                style={[
+                  styles.slotCard,
+                  filled ? shadow : { backgroundColor: meta.color + "14", borderStyle: "dashed", borderWidth: 1.5, borderColor: meta.color + "55" },
+                ]}
+                onPress={() =>
+                  navigation.navigate("SlotEditor", {
+                    date: selectedDateStr,
+                    slot,
+                    recipeId: entry?.recipeId,
+                    note: entry?.note,
+                  })
+                }
+              >
+                <View style={styles.slotLabelRow}>
+                  <Ionicons name={meta.icon} size={14} color={meta.color} />
+                  <Text style={[styles.slotLabel, { color: meta.color }]}>{meta.label.toUpperCase()}</Text>
                 </View>
-                {SLOTS.map((slot) => {
-                  const entry = entryFor(dateStr, slot);
-                  const displayText = entry?.recipeNameSnapshot || entry?.note || "Add";
-                  return (
-                    <TouchableOpacity
-                      key={slot}
-                      style={styles.slotRow}
-                      activeOpacity={0.6}
-                      onPress={() =>
-                        navigation.navigate("SlotEditor", {
-                          date: dateStr,
-                          slot,
-                          recipeId: entry?.recipeId,
-                          note: entry?.note,
-                        })
-                      }
-                    >
-                      <View style={styles.slotIcon}>
-                        <Ionicons name={SLOT_ICONS[slot]} size={16} color={colors.primary} />
+
+                {filled ? (
+                  <View style={styles.filledRow}>
+                    {recipe?.imageUrl ? (
+                      <Image source={{ uri: recipe.imageUrl }} style={styles.mealThumb} />
+                    ) : (
+                      <View style={[styles.mealThumb, styles.mealThumbFallback, { backgroundColor: meta.color + "22" }]}>
+                        <Ionicons name={meta.icon} size={18} color={meta.color} />
                       </View>
-                      <Text style={styles.slotName}>{slot}</Text>
-                      <Text
-                        style={entry ? styles.slotValue : styles.slotEmpty}
-                        numberOfLines={1}
-                      >
-                        {displayText}
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.mealName} numberOfLines={1}>
+                        {entry?.recipeNameSnapshot || entry?.note}
                       </Text>
-                      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                      <View style={styles.mealMetaRow}>
+                        {recipe?.prepTimeMinutes ? (
+                          <View style={styles.metaChip}>
+                            <Ionicons name="time-outline" size={11} color={colors.textSecondary} />
+                            <Text style={styles.metaChipText}>{recipe.prepTimeMinutes} min</Text>
+                          </View>
+                        ) : null}
+                        {recipe?.tags.slice(0, 2).map((tag: string) => (
+                          <View key={tag} style={styles.metaChip}>
+                            <Text style={styles.metaChipText}>{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                  </View>
+                ) : (
+                  <View style={styles.emptyRow}>
+                    <View style={[styles.addCircle, { backgroundColor: meta.color }]}>
+                      <Ionicons name="add" size={16} color={colors.white} />
+                    </View>
+                    <Text style={[styles.emptyText, { color: meta.color }]}>Add {meta.label.toLowerCase()}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: { fontSize: 15, color: colors.textSecondary },
-  weekHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  weekArrow: {
-    width: 36,
-    height: 36,
+  scrollContent: { padding: spacing.md, paddingTop: spacing.lg, paddingBottom: 40 },
+  loadingText: { fontSize: 14, color: colors.textSecondary, textAlign: "center", marginTop: spacing.xl },
+
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
+  monthLabel: { ...type.title, color: colors.textPrimary },
+  topRowActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  todayPill: {
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: radii.full,
-    backgroundColor: colors.primarySoft,
+    marginRight: 2,
+  },
+  todayPillText: { fontSize: 12, fontWeight: "700", color: colors.accentDark },
+  weekArrow: {
+    width: 30,
+    height: 30,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceAlt,
     justifyContent: "center",
     alignItems: "center",
   },
-  weekLabel: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
-  scrollContent: { padding: spacing.md, paddingBottom: 32 },
-  dayCard: {
+
+  dayStrip: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.lg },
+  dayChip: {
+    width: 42,
+    paddingVertical: 8,
+    borderRadius: radii.md,
+    alignItems: "center",
+    gap: 4,
+  },
+  dayChipSelected: { backgroundColor: colors.accent },
+  dayChipWeekday: { fontSize: 11, fontWeight: "600", color: colors.textMuted },
+  dayChipDate: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
+  dayChipToday: { color: colors.accent },
+  dayChipTextSelected: { color: colors.white },
+  dayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: "transparent" },
+
+  heroRow: { marginBottom: spacing.md },
+  heroTitle: { ...type.hero, color: colors.textPrimary },
+  heroSubtitle: { ...type.subtitle, color: colors.textSecondary, marginTop: 2 },
+
+  slots: { gap: spacing.sm },
+  slotCard: {
     backgroundColor: colors.surface,
     borderRadius: radii.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadow,
+    padding: spacing.sm,
   },
-  dayHeaderRow: { flexDirection: "row", alignItems: "center", marginBottom: spacing.sm },
-  dayLabel: { fontSize: 14, fontWeight: "700", color: colors.textPrimary },
-  todayBadge: {
-    marginLeft: spacing.sm,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radii.full,
-  },
-  todayBadgeText: { fontSize: 11, fontWeight: "700", color: colors.primaryDark },
-  slotRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 9,
-    borderTopWidth: 1,
-    borderTopColor: colors.background,
-  },
-  slotIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: radii.full,
-    backgroundColor: colors.primarySoft,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: spacing.sm,
-  },
-  slotName: { fontSize: 13, color: colors.textSecondary, textTransform: "capitalize", width: 72 },
-  slotValue: { fontSize: 14, color: colors.textPrimary, flex: 1, textAlign: "right", marginRight: 6, fontWeight: "500" },
-  slotEmpty: { fontSize: 14, color: colors.textMuted, flex: 1, textAlign: "right", marginRight: 6 },
+  slotLabelRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8, marginLeft: 2 },
+  slotLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
+
+  filledRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  mealThumb: { width: 44, height: 44, borderRadius: radii.sm },
+  mealThumbFallback: { justifyContent: "center", alignItems: "center" },
+  mealName: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
+  mealMetaRow: { flexDirection: "row", gap: 6, marginTop: 3, flexWrap: "wrap" },
+  metaChip: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.surfaceAlt, borderRadius: radii.full, paddingHorizontal: 7, paddingVertical: 2 },
+  metaChipText: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
+
+  emptyRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
+  addCircle: { width: 26, height: 26, borderRadius: radii.full, justifyContent: "center", alignItems: "center" },
+  emptyText: { fontSize: 14, fontWeight: "700" },
 });

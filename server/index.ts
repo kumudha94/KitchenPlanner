@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes/index";
+import { ensureSchema } from "./db";
 
 // Backstop for any promise rejection that isn't caught by a route handler or
 // forwarded via next(). Without this, Node's default behavior
@@ -39,6 +40,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await ensureSchema();
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

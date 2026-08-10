@@ -14,6 +14,9 @@ export const recipes = pgTable("recipes", {
   mealType: varchar("meal_type", { length: 20 }),
   ingredients: jsonb("ingredients").notNull().default(sql`'[]'::jsonb`),
   notes: text("notes"),
+  prepTimeMinutes: integer("prep_time_minutes"),
+  tags: jsonb("tags").notNull().default(sql`'[]'::jsonb`),
+  imageUrl: varchar("image_url", { length: 500 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -32,11 +35,15 @@ export const insertRecipeSchema = createInsertSchema(recipes)
       )
       .default([]),
     notes: z.string().nullable().optional(),
+    prepTimeMinutes: z.number().int().positive().nullable().optional(),
+    tags: z.array(z.string().min(1)).default([]),
+    imageUrl: z.string().url().nullable().optional(),
   });
 
 export type InsertRecipe = z.infer<typeof insertRecipeSchema>;
-export type Recipe = Omit<typeof recipes.$inferSelect, "ingredients"> & {
+export type Recipe = Omit<typeof recipes.$inferSelect, "ingredients" | "tags"> & {
   ingredients: RecipeIngredient[];
+  tags: string[];
 };
 
 export const mealPlanEntries = pgTable(

@@ -1,17 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../lib/api";
-import type { MealPlanEntry, Recipe } from "../lib/types";
+import type { MealPlanEntry, MealType, Recipe } from "../lib/types";
 import type { PlannerStackParamList } from "../../App";
-import { colors, radii, spacing } from "../theme";
+import { colors, radii, spacing, type } from "../theme";
+import RecipeCard from "../components/RecipeCard";
 
 type Props = NativeStackScreenProps<PlannerStackParamList, "SlotEditor">;
 
+const CATEGORIES: { key: MealType | "all"; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "breakfast", label: "Breakfast" },
+  { key: "lunch", label: "Lunch" },
+  { key: "snack", label: "Snack" },
+  { key: "dinner", label: "Dinner" },
+];
+
 export default function SlotEditorScreen({ route, navigation }: Props) {
-  const { date, slot, recipeId: initialRecipeId, note: initialNote } = route.params;
+  const { date, slot, note: initialNote } = route.params;
   const queryClient = useQueryClient();
 
   const { data: recipes } = useQuery({
@@ -19,18 +28,20 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
     queryFn: () => apiRequest<Recipe[]>("/api/recipes"),
   });
 
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<MealType | "all">(slot);
+  const [noteMode, setNoteMode] = useState(!!initialNote);
   const [note, setNote] = useState(initialNote || "");
-  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(initialRecipeId ?? null);
 
   useEffect(() => {
     navigation.setOptions({ title: `${slot[0].toUpperCase()}${slot.slice(1)} · ${date}` });
   }, []);
 
   const saveMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (recipeId: number | null) =>
       apiRequest<MealPlanEntry>(`/api/meal-plan/${date}/${slot}`, {
         method: "PUT",
-        body: JSON.stringify({ recipeId: selectedRecipeId, note: note.trim() || null }),
+        body: JSON.stringify({ recipeId, note: recipeId ? null : note.trim() || null }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["meal-plan"] });
@@ -48,92 +59,158 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
     onError: (error: Error) => Alert.alert("Could not clear slot", error.message),
   });
 
+  const filteredRecipes = useMemo(() => {
+    let list = recipes ?? [];
+    if (category !== "all") list = list.filter((r: Recipe) => r.mealType === category);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (r: Recipe) => r.name.toLowerCase().includes(q) || r.tags.some((t: string) => t.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [recipes, category, search]);
+
+  if (noteMode) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.label}>Quick note for this slot</Text>
+        <TextInput
+          style={styles.noteInput}
+          value={note}
+          onChangeText={setNote}
+          placeholder="e.g. Leftovers, eating out…"
+          placeholderTextColor={colors.textMuted}
+          multiline
+          autoFocus
+        />
+        <TouchableOpacity style={styles.saveButton} onPress={() => saveMutation.mutate(null)} disabled={saveMutation.isPending}>
+          <Text style={styles.saveButtonText}>{saveMutation.isPending ? "Saving…" : "Save note"}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.linkButton} onPress={() => setNoteMode(false)}>
+          <Text style={styles.linkButtonText}>Pick a recipe instead</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Pick a recipe</Text>
-      <FlatList
-        data={recipes ?? []}
-        keyExtractor={(item) => String(item.id)}
-        style={{ maxHeight: 260 }}
-        renderItem={({ item }) => {
-          const active = selectedRecipeId === item.id;
+      <View style={styles.searchRow}>
+        <Ionicons name="search" size={17} color={colors.textMuted} />
+        <TextInput
+          style={styles.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search recipes…"
+          placeholderTextColor={colors.textMuted}
+        />
+      </View>
+
+      <View style={styles.categoryRow}>
+        {CATEGORIES.map((c) => {
+          const active = category === c.key;
           return (
             <TouchableOpacity
-              style={[styles.recipeRow, active && styles.recipeRowActive]}
-              activeOpacity={0.7}
-              onPress={() => setSelectedRecipeId(active ? null : item.id)}
+              key={c.key}
+              style={[styles.categoryChip, active && styles.categoryChipActive]}
+              onPress={() => setCategory(c.key)}
             >
-              <Text style={[styles.recipeRowText, active && styles.recipeRowTextActive]}>{item.name}</Text>
-              {active ? <Ionicons name="checkmark-circle" size={20} color={colors.primary} /> : null}
+              <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{c.label}</Text>
             </TouchableOpacity>
           );
-        }}
-        ListEmptyComponent={<Text style={styles.emptyText}>No recipes yet — add one in the Recipes tab</Text>}
+        })}
+      </View>
+
+      <FlatList
+        data={filteredRecipes}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: spacing.lg }}
+        renderItem={({ item }) => (
+          <RecipeCard recipe={item} elevated={false} onPress={() => saveMutation.mutate(item.id)} />
+        )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="restaurant-outline" size={32} color={colors.textMuted} />
+            <Text style={styles.emptyText}>
+              {recipes?.length ? "No recipes match" : "No recipes yet — add one in the Recipes tab"}
+            </Text>
+          </View>
+        }
       />
 
-      <Text style={styles.label}>Or just a note</Text>
-      <TextInput
-        style={styles.input}
-        value={note}
-        onChangeText={setNote}
-        placeholder="e.g. Leftovers"
-        placeholderTextColor={colors.textMuted}
-      />
-
-      <TouchableOpacity style={styles.saveButton} onPress={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-        <Text style={styles.saveButtonText}>{saveMutation.isPending ? "Saving…" : "Save"}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.clearButton}
-        onPress={() => clearMutation.mutate()}
-        disabled={clearMutation.isPending || saveMutation.isPending}
-      >
-        <Text style={styles.clearButtonText}>
-          {clearMutation.isPending ? "Clearing…" : "Clear this slot"}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.linkButton} onPress={() => setNoteMode(true)}>
+          <Ionicons name="create-outline" size={15} color={colors.accentDark} />
+          <Text style={styles.linkButtonText}>Add a quick note instead</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.clearButton}
+          onPress={() => clearMutation.mutate()}
+          disabled={clearMutation.isPending}
+        >
+          <Text style={styles.clearButtonText}>{clearMutation.isPending ? "Clearing…" : "Clear this slot"}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
-  label: { fontSize: 13, fontWeight: "700", color: colors.textSecondary, marginTop: spacing.sm, marginBottom: spacing.sm },
-  emptyText: { fontSize: 13, color: colors.textMuted },
-  recipeRow: {
+  label: { ...type.label, color: colors.textSecondary, marginBottom: spacing.sm },
+
+  searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.sm,
-    marginBottom: 6,
+    gap: 8,
     backgroundColor: colors.surface,
+    borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  recipeRowActive: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
-  recipeRowText: { fontSize: 15, color: colors.textPrimary },
-  recipeRowTextActive: { fontWeight: "600", color: colors.primaryDark },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
+
+  categoryRow: { flexDirection: "row", gap: 8, marginTop: spacing.sm, flexWrap: "wrap" },
+  categoryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceAlt,
+  },
+  categoryChipActive: { backgroundColor: colors.accent },
+  categoryChipText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+  categoryChipTextActive: { color: colors.white },
+
+  emptyState: { alignItems: "center", paddingTop: spacing.xl, gap: spacing.sm },
+  emptyText: { fontSize: 13, color: colors.textMuted, textAlign: "center" },
+
+  footer: { paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, gap: spacing.sm },
+  linkButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 8 },
+  linkButtonText: { color: colors.accentDark, fontSize: 14, fontWeight: "600" },
+
+  noteInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    padding: spacing.md,
     fontSize: 15,
     color: colors.textPrimary,
+    minHeight: 100,
+    textAlignVertical: "top",
   },
   saveButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     borderRadius: radii.sm,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: spacing.lg,
   },
   saveButtonText: { color: colors.white, fontWeight: "700", fontSize: 15 },
-  clearButton: { alignItems: "center", marginTop: spacing.md },
+
+  clearButton: { alignItems: "center", paddingVertical: 8 },
   clearButtonText: { color: colors.danger, fontSize: 14, fontWeight: "600" },
 });

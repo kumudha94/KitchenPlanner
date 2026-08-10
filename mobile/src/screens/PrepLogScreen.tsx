@@ -1,17 +1,12 @@
-import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing } from "../theme";
+import WorkflowTeaser from "../components/WorkflowTeaser";
 
 export default function PrepLogScreen() {
   return (
-    <View style={styles.container}>
-      <Ionicons name="journal-outline" size={40} color={colors.textMuted} />
-      <Text style={styles.text}>Prep log coming soon</Text>
-    </View>
+    <WorkflowTeaser
+      active="prep"
+      icon="flame-outline"
+      title="Know what to prep tonight"
+      description="Once this ships, it'll tell you what to prep ahead for tomorrow's meals — straight from your plan."
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background, gap: spacing.sm },
-  text: { fontSize: 15, color: colors.textSecondary },
-});

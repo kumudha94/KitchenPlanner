@@ -9,6 +9,9 @@ export type Recipe = {
   mealType: MealType | null;
   ingredients: RecipeIngredient[];
   notes: string | null;
+  prepTimeMinutes: number | null;
+  tags: string[];
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -18,6 +21,9 @@ export type InsertRecipe = {
   mealType?: MealType | null;
   ingredients: RecipeIngredient[];
   notes?: string | null;
+  prepTimeMinutes?: number | null;
+  tags?: string[];
+  imageUrl?: string | null;
 };
 
 export type MealPlanEntry = {

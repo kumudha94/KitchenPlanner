@@ -40,17 +40,18 @@ export type RecipesStackParamList = {
   AddEditRecipe: { recipeId?: number };
 };
 
+const minimalHeader = {
+  headerStyle: { backgroundColor: colors.background },
+  headerShadowVisible: false,
+  headerTintColor: colors.textPrimary,
+  headerTitleStyle: { fontWeight: "700" as const, fontSize: 17 },
+};
+
 const RecipesStack = createNativeStackNavigator<RecipesStackParamList>();
 
 function RecipesStackNavigator() {
   return (
-    <RecipesStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.white,
-        headerTitleStyle: { fontWeight: "700" },
-      }}
-    >
+    <RecipesStack.Navigator screenOptions={minimalHeader}>
       <RecipesStack.Screen name="RecipesList" component={RecipesScreen} options={{ title: "Recipes" }} />
       <RecipesStack.Screen name="AddEditRecipe" component={AddEditRecipeScreen} />
     </RecipesStack.Navigator>
@@ -66,15 +67,13 @@ const PlannerStack = createNativeStackNavigator<PlannerStackParamList>();
 
 function PlannerStackNavigator() {
   return (
-    <PlannerStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.white,
-        headerTitleStyle: { fontWeight: "700" },
-      }}
-    >
-      <PlannerStack.Screen name="PlannerWeek" component={PlannerScreen} options={{ title: "Planner" }} />
-      <PlannerStack.Screen name="SlotEditor" component={SlotEditorScreen} options={{ presentation: "modal" }} />
+    <PlannerStack.Navigator screenOptions={minimalHeader}>
+      <PlannerStack.Screen name="PlannerWeek" component={PlannerScreen} options={{ headerShown: false }} />
+      <PlannerStack.Screen
+        name="SlotEditor"
+        component={SlotEditorScreen}
+        options={{ presentation: "modal" }}
+      />
     </PlannerStack.Navigator>
   );
 }
@@ -87,19 +86,24 @@ function TabNavigator() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = "ellipse";
-          if (route.name === "Planner") iconName = focused ? "calendar" : "calendar-outline";
+          if (route.name === "Planner") iconName = focused ? "today" : "today-outline";
           else if (route.name === "Recipes") iconName = focused ? "book" : "book-outline";
           else if (route.name === "Grocery") iconName = focused ? "cart" : "cart-outline";
-          else if (route.name === "PrepLog") iconName = focused ? "journal" : "journal-outline";
+          else if (route.name === "PrepLog") iconName = focused ? "flame" : "flame-outline";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: { borderTopColor: colors.border, height: 60, paddingBottom: 8, paddingTop: 6 },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.white,
-        headerTitleStyle: { fontWeight: "700" },
+        tabBarStyle: {
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          height: 62,
+          paddingBottom: 8,
+          paddingTop: 6,
+          backgroundColor: colors.surface,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        ...minimalHeader,
       })}
     >
       <Tab.Screen name="Planner" component={PlannerStackNavigator} options={{ title: "Planner", headerShown: false }} />
@@ -114,7 +118,7 @@ const navigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: colors.primary,
+    primary: colors.accent,
     background: colors.background,
     card: colors.surface,
     text: colors.textPrimary,
@@ -142,7 +146,7 @@ export default function App() {
           <NavigationContainer theme={navigationTheme}>
             <TabNavigator />
           </NavigationContainer>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

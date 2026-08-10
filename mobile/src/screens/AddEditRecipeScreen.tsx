@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, StyleSheet, Alert } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -27,6 +27,10 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
   const [mealType, setMealType] = useState<MealType | undefined>(undefined);
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([{ name: "", quantity: "" }]);
   const [notes, setNotes] = useState("");
+  const [prepTime, setPrepTime] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagDraft, setTagDraft] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
 
   useEffect(() => {
     if (existing) {
@@ -34,6 +38,9 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
       setMealType(existing.mealType ?? undefined);
       setIngredients(existing.ingredients.length ? existing.ingredients : [{ name: "", quantity: "" }]);
       setNotes(existing.notes ?? "");
+      setPrepTime(existing.prepTimeMinutes ? String(existing.prepTimeMinutes) : "");
+      setTags(existing.tags ?? []);
+      setImageUrl(existing.imageUrl ?? "");
     }
   }, [existing]);
 
@@ -69,11 +76,15 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
       return;
     }
     const cleanIngredients = ingredients.filter((i) => i.name.trim().length > 0 && i.quantity.trim().length > 0);
+    const parsedPrepTime = prepTime.trim() ? parseInt(prepTime.trim(), 10) : null;
     saveMutation.mutate({
       name: name.trim(),
       mealType: mealType ?? null,
       ingredients: cleanIngredients,
       notes: notes.trim() || null,
+      prepTimeMinutes: parsedPrepTime && parsedPrepTime > 0 ? parsedPrepTime : null,
+      tags,
+      imageUrl: imageUrl.trim() || null,
     });
   }
 
@@ -89,23 +100,94 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
     setIngredients((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function addTag() {
+    const t = tagDraft.trim();
+    if (t && !tags.includes(t)) setTags((prev) => [...prev, t]);
+    setTagDraft("");
+  }
+
+  function removeTag(t: string) {
+    setTags((prev) => prev.filter((x) => x !== t));
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <Text style={styles.label}>Name</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Poha" />
+      <TextInput
+        style={styles.input}
+        value={name}
+        onChangeText={setName}
+        placeholder="e.g. Poha"
+        placeholderTextColor={colors.textMuted}
+      />
 
       <Text style={styles.label}>Meal type</Text>
       <View style={styles.chipRow}>
-        {MEAL_TYPES.map((type) => (
+        {MEAL_TYPES.map((mt) => (
           <TouchableOpacity
-            key={type}
-            style={[styles.chip, mealType === type && styles.chipActive]}
-            onPress={() => setMealType(mealType === type ? undefined : type)}
+            key={mt}
+            style={[styles.chip, mealType === mt && styles.chipActive]}
+            onPress={() => setMealType(mealType === mt ? undefined : mt)}
           >
-            <Text style={[styles.chipText, mealType === type && styles.chipTextActive]}>{type}</Text>
+            <Text style={[styles.chipText, mealType === mt && styles.chipTextActive]}>{mt}</Text>
           </TouchableOpacity>
         ))}
       </View>
+
+      <View style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.label}>Prep time</Text>
+          <View style={styles.inputWithSuffix}>
+            <TextInput
+              style={styles.inputInner}
+              value={prepTime}
+              onChangeText={(v) => setPrepTime(v.replace(/[^0-9]/g, ""))}
+              placeholder="15"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="number-pad"
+            />
+            <Text style={styles.suffix}>min</Text>
+          </View>
+        </View>
+      </View>
+
+      <Text style={styles.label}>Tags</Text>
+      <View style={styles.tagInputRow}>
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          value={tagDraft}
+          onChangeText={setTagDraft}
+          placeholder="e.g. Quick, Vegetarian, Kids"
+          placeholderTextColor={colors.textMuted}
+          onSubmitEditing={addTag}
+          returnKeyType="done"
+        />
+        <TouchableOpacity style={styles.tagAddButton} onPress={addTag}>
+          <Ionicons name="add" size={20} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+      {tags.length > 0 && (
+        <View style={styles.chipRow}>
+          {tags.map((t) => (
+            <TouchableOpacity key={t} style={styles.tagChip} onPress={() => removeTag(t)}>
+              <Text style={styles.tagChipText}>{t}</Text>
+              <Ionicons name="close" size={13} color={colors.accentDark} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      <Text style={styles.label}>Image URL (optional)</Text>
+      <TextInput
+        style={styles.input}
+        value={imageUrl}
+        onChangeText={setImageUrl}
+        placeholder="https://…"
+        placeholderTextColor={colors.textMuted}
+        autoCapitalize="none"
+        keyboardType="url"
+      />
+      {imageUrl.trim() ? <Image source={{ uri: imageUrl.trim() }} style={styles.imagePreview} /> : null}
 
       <Text style={styles.label}>Ingredients</Text>
       {ingredients.map((ing, index) => (
@@ -115,12 +197,14 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
             value={ing.name}
             onChangeText={(v) => updateIngredient(index, "name", v)}
             placeholder="Ingredient"
+            placeholderTextColor={colors.textMuted}
           />
           <TextInput
             style={[styles.input, { flex: 1, marginRight: 8 }]}
             value={ing.quantity}
             onChangeText={(v) => updateIngredient(index, "quantity", v)}
             placeholder="Qty"
+            placeholderTextColor={colors.textMuted}
           />
           <TouchableOpacity onPress={() => removeIngredientRow(index)}>
             <Ionicons name="close-circle" size={22} color={colors.danger} />
@@ -128,7 +212,7 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
         </View>
       ))}
       <TouchableOpacity onPress={addIngredientRow} style={styles.addRow}>
-        <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+        <Ionicons name="add-circle-outline" size={20} color={colors.accent} />
         <Text style={styles.addRowText}>Add ingredient</Text>
       </TouchableOpacity>
 
@@ -138,6 +222,7 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
         value={notes}
         onChangeText={setNotes}
         placeholder="Optional notes"
+        placeholderTextColor={colors.textMuted}
         multiline
       />
 
@@ -165,6 +250,7 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   label: { fontSize: 13, fontWeight: "700", color: colors.textSecondary, marginTop: spacing.md, marginBottom: 6 },
+  row: { flexDirection: "row", gap: spacing.sm },
   input: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -175,7 +261,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textPrimary,
   },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  inputWithSuffix: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    paddingHorizontal: 12,
+  },
+  inputInner: { flex: 1, paddingVertical: 10, fontSize: 15, color: colors.textPrimary },
+  suffix: { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -184,14 +281,34 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   chipText: { fontSize: 13, color: colors.textSecondary, textTransform: "capitalize" },
   chipTextActive: { color: colors.white, fontWeight: "600" },
+  tagInputRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  tagAddButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.sm,
+    backgroundColor: colors.accent,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tagChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.full,
+  },
+  tagChipText: { fontSize: 13, color: colors.accentDark, fontWeight: "600" },
+  imagePreview: { width: "100%", height: 140, borderRadius: radii.md, marginTop: spacing.sm, backgroundColor: colors.surfaceAlt },
   ingredientRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   addRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
-  addRowText: { color: colors.primary, marginLeft: 6, fontSize: 14, fontWeight: "600" },
+  addRowText: { color: colors.accent, marginLeft: 6, fontSize: 14, fontWeight: "600" },
   saveButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     borderRadius: radii.sm,
     paddingVertical: 14,
     alignItems: "center",
