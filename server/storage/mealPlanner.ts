@@ -25,10 +25,29 @@ export async function upsertSlot(date: string, slot: string, update: SlotUpdate)
     update.recipeId !== undefined ? update.recipeId : existing?.recipeId ?? null;
   const effectiveNote = update.note !== undefined ? update.note : existing?.note ?? null;
 
-  let recipeNameSnapshot: string | null = null;
-  if (effectiveRecipeId !== null && effectiveRecipeId !== undefined) {
-    const [recipe] = await db.select().from(recipes).where(eq(recipes.id, effectiveRecipeId));
-    recipeNameSnapshot = recipe?.name ?? null;
+  // Only touch recipeNameSnapshot when the effective recipeId actually
+  // differs from what's already stored — i.e. the caller chose a recipe or
+  // explicitly cleared it. This is a value-diff rather than a raw
+  // key-presence check because the mobile client always includes `recipeId`
+  // in its PUT body (even when unchanged); gating on presence alone would
+  // still wipe the snapshot on a note-only edit of a slot whose recipe was
+  // already deleted. When nothing changed, the existing snapshot is carried
+  // forward unchanged, same as any other omitted field.
+  const recipeIdChanged = !existing || effectiveRecipeId !== (existing.recipeId ?? null);
+
+  let recipeNameSnapshot: string | null = existing?.recipeNameSnapshot ?? null;
+  if (recipeIdChanged) {
+    if (effectiveRecipeId !== null) {
+      const [recipe] = await db.select().from(recipes).where(eq(recipes.id, effectiveRecipeId));
+      if (!recipe) {
+        const error = new Error("Recipe no longer exists") as Error & { status?: number };
+        error.status = 404;
+        throw error;
+      }
+      recipeNameSnapshot = recipe.name;
+    } else {
+      recipeNameSnapshot = null;
+    }
   }
 
   const [entry] = await db
