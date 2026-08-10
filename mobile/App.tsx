@@ -1,9 +1,12 @@
 import "react-native-gesture-handler";
-import { NavigationContainer } from "@react-navigation/native";
+import { useCallback } from "react";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -15,6 +18,9 @@ import SlotEditorScreen from "./src/screens/SlotEditorScreen";
 import type { MealSlot } from "./src/lib/types";
 import GroceryScreen from "./src/screens/GroceryScreen";
 import PrepLogScreen from "./src/screens/PrepLogScreen";
+import { colors } from "./src/theme";
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,8 +46,9 @@ function RecipesStackNavigator() {
   return (
     <RecipesStack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: "#2E7D32" },
-        headerTintColor: "#fff",
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: colors.white,
+        headerTitleStyle: { fontWeight: "700" },
       }}
     >
       <RecipesStack.Screen name="RecipesList" component={RecipesScreen} options={{ title: "Recipes" }} />
@@ -61,8 +68,9 @@ function PlannerStackNavigator() {
   return (
     <PlannerStack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: "#2E7D32" },
-        headerTintColor: "#fff",
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: colors.white,
+        headerTitleStyle: { fontWeight: "700" },
       }}
     >
       <PlannerStack.Screen name="PlannerWeek" component={PlannerScreen} options={{ title: "Planner" }} />
@@ -85,9 +93,13 @@ function TabNavigator() {
           else if (route.name === "PrepLog") iconName = focused ? "journal" : "journal-outline";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: "#2E7D32",
-        headerStyle: { backgroundColor: "#2E7D32" },
-        headerTintColor: "#fff",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: { borderTopColor: colors.border, height: 60, paddingBottom: 8, paddingTop: 6 },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: colors.white,
+        headerTitleStyle: { fontWeight: "700" },
       })}
     >
       <Tab.Screen name="Planner" component={PlannerStackNavigator} options={{ title: "Planner", headerShown: false }} />
@@ -98,15 +110,39 @@ function TabNavigator() {
   );
 }
 
+const navigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: colors.primary,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.textPrimary,
+    border: colors.border,
+  },
+};
+
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts(Ionicons.font);
+
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded || fontError) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <NavigationContainer>
+          <NavigationContainer theme={navigationTheme}>
             <TabNavigator />
           </NavigationContainer>
-          <StatusBar style="auto" />
+          <StatusBar style="light" />
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

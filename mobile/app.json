@@ -5,8 +5,14 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#7C3AED",
+    "icon": "./assets/splash-icon.png",
     "android": {
-      "package": "com.kitchenplanner.app"
+      "package": "com.kitchenplanner.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/splash-icon.png",
+        "backgroundColor": "#7C3AED"
+      }
     },
     "extra": {
       "eas": {
@@ -16,7 +22,15 @@
     "owner": "glorykumudha",
     "plugins": [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#7C3AED",
+          "resizeMode": "contain"
+        }
+      ]
     ]
   }
 }

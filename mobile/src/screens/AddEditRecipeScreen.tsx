@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../lib/api";
 import type { InsertRecipe, Recipe, RecipeIngredient, MealType } from "../lib/types";
 import type { RecipesStackParamList } from "../../App";
+import { colors, radii, spacing } from "../theme";
 
 type Props = NativeStackScreenProps<RecipesStackParamList, "AddEditRecipe">;
 
@@ -122,12 +123,12 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
             placeholder="Qty"
           />
           <TouchableOpacity onPress={() => removeIngredientRow(index)}>
-            <Ionicons name="close-circle" size={22} color="#c00" />
+            <Ionicons name="close-circle" size={22} color={colors.danger} />
           </TouchableOpacity>
         </View>
       ))}
       <TouchableOpacity onPress={addIngredientRow} style={styles.addRow}>
-        <Ionicons name="add-circle-outline" size={20} color="#2E7D32" />
+        <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
         <Text style={styles.addRowText}>Add ingredient</Text>
       </TouchableOpacity>
 
@@ -162,26 +163,41 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  label: { fontSize: 13, fontWeight: "600", color: "#555", marginTop: 16, marginBottom: 6 },
+  container: { flex: 1, backgroundColor: colors.background },
+  label: { fontSize: 13, fontWeight: "700", color: colors.textSecondary, marginTop: spacing.md, marginBottom: 6 },
   input: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
+    color: colors.textPrimary,
   },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: "#ddd" },
-  chipActive: { backgroundColor: "#2E7D32", borderColor: "#2E7D32" },
-  chipText: { fontSize: 13, color: "#555", textTransform: "capitalize" },
-  chipTextActive: { color: "#fff" },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, color: colors.textSecondary, textTransform: "capitalize" },
+  chipTextActive: { color: colors.white, fontWeight: "600" },
   ingredientRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   addRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
-  addRowText: { color: "#2E7D32", marginLeft: 6, fontSize: 14 },
-  saveButton: { backgroundColor: "#2E7D32", borderRadius: 8, paddingVertical: 14, alignItems: "center", marginTop: 24 },
-  saveButtonText: { color: "#fff", fontWeight: "600", fontSize: 15 },
-  deleteButton: { alignItems: "center", marginTop: 16, marginBottom: 32 },
-  deleteButtonText: { color: "#c00", fontSize: 14 },
+  addRowText: { color: colors.primary, marginLeft: 6, fontSize: 14, fontWeight: "600" },
+  saveButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radii.sm,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: spacing.lg,
+  },
+  saveButtonText: { color: colors.white, fontWeight: "700", fontSize: 15 },
+  deleteButton: { alignItems: "center", marginTop: spacing.md, marginBottom: spacing.xl },
+  deleteButtonText: { color: colors.danger, fontSize: 14, fontWeight: "600" },
 });
