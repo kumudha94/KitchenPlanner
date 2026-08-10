@@ -11,6 +11,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import RecipesScreen from "./src/screens/RecipesScreen";
 import AddEditRecipeScreen from "./src/screens/AddEditRecipeScreen";
 import PlannerScreen from "./src/screens/PlannerScreen";
+import SlotEditorScreen from "./src/screens/SlotEditorScreen";
+import type { MealSlot } from "./src/lib/types";
 import GroceryScreen from "./src/screens/GroceryScreen";
 import PrepLogScreen from "./src/screens/PrepLogScreen";
 
@@ -48,6 +50,27 @@ function RecipesStackNavigator() {
   );
 }
 
+export type PlannerStackParamList = {
+  PlannerWeek: undefined;
+  SlotEditor: { date: string; slot: MealSlot };
+};
+
+const PlannerStack = createNativeStackNavigator<PlannerStackParamList>();
+
+function PlannerStackNavigator() {
+  return (
+    <PlannerStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#2E7D32" },
+        headerTintColor: "#fff",
+      }}
+    >
+      <PlannerStack.Screen name="PlannerWeek" component={PlannerScreen} options={{ title: "Planner" }} />
+      <PlannerStack.Screen name="SlotEditor" component={SlotEditorScreen} options={{ presentation: "modal" }} />
+    </PlannerStack.Navigator>
+  );
+}
+
 const Tab = createBottomTabNavigator<TabParamList>();
 
 function TabNavigator() {
@@ -67,7 +90,7 @@ function TabNavigator() {
         headerTintColor: "#fff",
       })}
     >
-      <Tab.Screen name="Planner" component={PlannerScreen} options={{ title: "Planner" }} />
+      <Tab.Screen name="Planner" component={PlannerStackNavigator} options={{ title: "Planner", headerShown: false }} />
       <Tab.Screen name="Recipes" component={RecipesStackNavigator} options={{ title: "Recipes", headerShown: false }} />
       <Tab.Screen name="Grocery" component={GroceryScreen} options={{ title: "Grocery" }} />
       <Tab.Screen name="PrepLog" component={PrepLogScreen} options={{ title: "Prep Log" }} />
