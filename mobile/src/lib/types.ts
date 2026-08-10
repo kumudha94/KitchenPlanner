@@ -15,9 +15,9 @@ export type Recipe = {
 
 export type InsertRecipe = {
   name: string;
-  mealType?: MealType;
+  mealType?: MealType | null;
   ingredients: RecipeIngredient[];
-  notes?: string;
+  notes?: string | null;
 };
 
 export type MealPlanEntry = {

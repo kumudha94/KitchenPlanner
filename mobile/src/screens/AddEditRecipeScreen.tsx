@@ -69,9 +69,9 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
     const cleanIngredients = ingredients.filter((i) => i.name.trim().length > 0 && i.quantity.trim().length > 0);
     saveMutation.mutate({
       name: name.trim(),
-      mealType,
+      mealType: mealType ?? null,
       ingredients: cleanIngredients,
-      notes: notes.trim() || undefined,
+      notes: notes.trim() || null,
     });
   }
 

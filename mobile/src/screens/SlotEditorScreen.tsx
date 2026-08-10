@@ -28,7 +28,7 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
     mutationFn: () =>
       apiRequest<MealPlanEntry>(`/api/meal-plan/${date}/${slot}`, {
         method: "PUT",
-        body: JSON.stringify({ recipeId: selectedRecipeId, note: note.trim() || undefined }),
+        body: JSON.stringify({ recipeId: selectedRecipeId, note: note.trim() || null }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["meal-plan"] });

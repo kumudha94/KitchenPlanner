@@ -22,7 +22,7 @@ export const insertRecipeSchema = createInsertSchema(recipes)
   .omit({ id: true, createdAt: true, updatedAt: true })
   .extend({
     name: z.string().min(1, "Recipe name is required"),
-    mealType: z.enum(MEAL_TYPES).optional(),
+    mealType: z.enum(MEAL_TYPES).nullable().optional(),
     ingredients: z
       .array(
         z.object({
@@ -31,7 +31,7 @@ export const insertRecipeSchema = createInsertSchema(recipes)
         })
       )
       .default([]),
-    notes: z.string().optional(),
+    notes: z.string().nullable().optional(),
   });
 
 export type InsertRecipe = z.infer<typeof insertRecipeSchema>;
