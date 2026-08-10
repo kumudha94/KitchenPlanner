@@ -43,7 +43,14 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    res.status(status).json({ error: err.message || "Internal Server Error" });
+    if (status >= 500) {
+      // Unexpected/internal errors (DB outages, raw Postgres errors, etc.) —
+      // log the real error server-side but don't leak internals to the client.
+      console.error(err);
+      res.status(status).json({ error: "Internal Server Error" });
+      return;
+    }
+    res.status(status).json({ error: err.message || "Bad Request" });
   });
 
   const port = parseInt(process.env.PORT || "5000", 10);
