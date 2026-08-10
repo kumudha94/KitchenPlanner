@@ -29,7 +29,7 @@ export default function PlannerScreen({ navigation }: Props) {
   });
 
   function entryFor(date: string, slot: MealSlot) {
-    return entries?.find((e) => e.date === date && e.slot === slot);
+    return entries?.find((e: MealPlanEntry) => e.date === date && e.slot === slot);
   }
 
   if (isLoading) {

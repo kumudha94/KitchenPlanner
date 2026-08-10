@@ -5,3 +5,6 @@ dist/
 .expo/
 mobile/node_modules/
 mobile/.expo/
+mobile/android/
+mobile/ios/
+mobile/.env
