@@ -7,6 +7,12 @@
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.kitchenplanner.app"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7c78c344-12f2-413e-a3cd-398274ce8cbc"
+      }
+    },
+    "owner": "glorykumudha"
   }
 }
