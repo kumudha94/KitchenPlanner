@@ -3,6 +3,15 @@ import express from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes/index";
 
+// Backstop for any promise rejection that isn't caught by a route handler or
+// forwarded via next(). Without this, Node's default behavior
+// (--unhandled-rejections=throw) crashes the process — a real risk on
+// Neon/Render free tier, where DB cold-starts and pool exhaustion are
+// expected, not rare.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+});
+
 const app = express();
 const isDev = process.env.NODE_ENV === "development";
 
