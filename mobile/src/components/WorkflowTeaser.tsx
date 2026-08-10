@@ -44,6 +44,9 @@ export default function WorkflowTeaser({ active, icon, title, description }: Pro
         <View style={styles.heroIcon}>
           <Ionicons name={icon} size={30} color={colors.accent} />
         </View>
+        <View style={styles.comingSoonBadge}>
+          <Text style={styles.comingSoonText}>NOT BUILT YET</Text>
+        </View>
         <Text style={styles.heroTitle}>{title}</Text>
         <Text style={styles.heroDescription}>{description}</Text>
       </View>
@@ -80,6 +83,14 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       marginBottom: spacing.md,
     },
+    comingSoonBadge: {
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: radii.full,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      marginBottom: spacing.sm,
+    },
+    comingSoonText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.6, color: colors.textMuted },
     heroTitle: { ...type.title, color: colors.textPrimary, marginBottom: spacing.xs },
     heroDescription: { ...type.body, color: colors.textSecondary, textAlign: "center", lineHeight: 21 },
   });

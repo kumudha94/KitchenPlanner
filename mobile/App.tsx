@@ -131,7 +131,15 @@ function TabNavigator() {
 export default function App() {
   const colors = useColors();
   const scheme = useColorScheme();
-  const [fontsLoaded, fontError] = useFonts(Ionicons.font);
+  // @expo/vector-icons registers Ionicons under the lowercase family name
+  // "ionicons" (see createIconSet(glyphMap, "ionicons", font) in its source) —
+  // Font.isLoaded() checks that exact lowercase key. `Ionicons.font` is just
+  // the raw asset reference, not a name->asset map, so passing it directly to
+  // useFonts() silently loads nothing under any key. Load it explicitly under
+  // the matching key instead.
+  const [fontsLoaded, fontError] = useFonts({
+    ionicons: require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf"),
+  });
 
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded || fontError) {
