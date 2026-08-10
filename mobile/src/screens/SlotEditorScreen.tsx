@@ -43,6 +43,7 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
       queryClient.invalidateQueries({ queryKey: ["meal-plan"] });
       navigation.goBack();
     },
+    onError: (error: Error) => Alert.alert("Could not clear slot", error.message),
   });
 
   return (
@@ -70,8 +71,14 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
         <Text style={styles.saveButtonText}>{saveMutation.isPending ? "Saving..." : "Save"}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.clearButton} onPress={() => clearMutation.mutate()}>
-        <Text style={styles.clearButtonText}>Clear this slot</Text>
+      <TouchableOpacity
+        style={styles.clearButton}
+        onPress={() => clearMutation.mutate()}
+        disabled={clearMutation.isPending || saveMutation.isPending}
+      >
+        <Text style={styles.clearButtonText}>
+          {clearMutation.isPending ? "Clearing..." : "Clear this slot"}
+        </Text>
       </TouchableOpacity>
     </View>
   );
