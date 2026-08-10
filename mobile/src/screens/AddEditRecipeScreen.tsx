@@ -56,6 +56,7 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
     mutationFn: () => apiRequest<void>(`/api/recipes/${recipeId}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recipes"] });
+      queryClient.invalidateQueries({ queryKey: ["meal-plan"] });
       navigation.goBack();
     },
     onError: (error: Error) => Alert.alert("Could not delete recipe", error.message),
