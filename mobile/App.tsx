@@ -52,7 +52,7 @@ function RecipesStackNavigator() {
 
 export type PlannerStackParamList = {
   PlannerWeek: undefined;
-  SlotEditor: { date: string; slot: MealSlot };
+  SlotEditor: { date: string; slot: MealSlot; recipeId?: number | null; note?: string | null };
 };
 
 const PlannerStack = createNativeStackNavigator<PlannerStackParamList>();

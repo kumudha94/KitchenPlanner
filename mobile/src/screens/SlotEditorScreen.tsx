@@ -9,7 +9,7 @@ import type { PlannerStackParamList } from "../../App";
 type Props = NativeStackScreenProps<PlannerStackParamList, "SlotEditor">;
 
 export default function SlotEditorScreen({ route, navigation }: Props) {
-  const { date, slot } = route.params;
+  const { date, slot, recipeId: initialRecipeId, note: initialNote } = route.params;
   const queryClient = useQueryClient();
 
   const { data: recipes } = useQuery({
@@ -17,8 +17,8 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
     queryFn: () => apiRequest<Recipe[]>("/api/recipes"),
   });
 
-  const [note, setNote] = useState("");
-  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
+  const [note, setNote] = useState(initialNote || "");
+  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(initialRecipeId ?? null);
 
   useEffect(() => {
     navigation.setOptions({ title: `${slot[0].toUpperCase()}${slot.slice(1)} · ${date}` });

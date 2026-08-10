@@ -66,7 +66,7 @@ export default function PlannerScreen({ navigation }: Props) {
                   <TouchableOpacity
                     key={slot}
                     style={styles.slotRow}
-                    onPress={() => navigation.navigate("SlotEditor", { date: dateStr, slot })}
+                    onPress={() => navigation.navigate("SlotEditor", { date: dateStr, slot, recipeId: entry?.recipeId, note: entry?.note })}
                   >
                     <Text style={styles.slotName}>{slot}</Text>
                     <Text style={entry ? styles.slotValue : styles.slotEmpty}>{displayText}</Text>
