@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import dns from "dns";
+import dns from "node:dns";
 
 // Some environments (this project's dev sandbox included) have no IPv6
 // route at all, but Node's default DNS result order can still hand back
@@ -50,6 +50,28 @@ export async function ensureSchema(): Promise<void> {
       description varchar(200) NOT NULL,
       for_date varchar(10) NOT NULL,
       checked boolean NOT NULL DEFAULT false,
+      created_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id serial PRIMARY KEY,
+      email varchar(255) NOT NULL,
+      username varchar(60) NOT NULL,
+      notifications_enabled boolean NOT NULL DEFAULT false,
+      newsletter_opt_in boolean NOT NULL DEFAULT false,
+      created_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (email)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS otp_codes (
+      id serial PRIMARY KEY,
+      email varchar(255) NOT NULL,
+      code varchar(6) NOT NULL,
+      expires_at timestamp NOT NULL,
       created_at timestamp NOT NULL DEFAULT now()
     )
   `);

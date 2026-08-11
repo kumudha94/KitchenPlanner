@@ -52,3 +52,16 @@ export type PrepTask = {
   checked: boolean;
   createdAt: string;
 };
+
+export type User = {
+  id: number;
+  email: string;
+  username: string;
+  notificationsEnabled: boolean;
+  newsletterOptIn: boolean;
+  createdAt: string;
+};
+
+export type VerifyOtpResponse =
+  | { isNewUser: false; token: string; user: User }
+  | { isNewUser: true; signupToken: string };

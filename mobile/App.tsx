@@ -1,6 +1,6 @@
 import "react-native-gesture-handler";
 import { useCallback } from "react";
-import { useColorScheme } from "react-native";
+import { useColorScheme, TouchableOpacity } from "react-native";
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -16,10 +16,15 @@ import RecipesScreen from "./src/screens/RecipesScreen";
 import AddEditRecipeScreen from "./src/screens/AddEditRecipeScreen";
 import PlannerScreen from "./src/screens/PlannerScreen";
 import SlotEditorScreen from "./src/screens/SlotEditorScreen";
-import type { MealSlot } from "./src/lib/types";
 import GroceryScreen from "./src/screens/GroceryScreen";
 import PrepLogScreen from "./src/screens/PrepLogScreen";
+import AccountScreen from "./src/screens/AccountScreen";
+import EmailEntryScreen from "./src/screens/auth/EmailEntryScreen";
+import OtpScreen from "./src/screens/auth/OtpScreen";
+import UsernameScreen from "./src/screens/auth/UsernameScreen";
+import type { MealSlot } from "./src/lib/types";
 import { useColors } from "./src/theme";
+import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -28,6 +33,33 @@ const queryClient = new QueryClient({
     queries: { staleTime: 1000 * 60 * 2, retry: 1 },
   },
 });
+
+export type AuthStackParamList = {
+  EmailEntry: undefined;
+  Otp: { email: string };
+  Username: { email: string; signupToken: string };
+};
+
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+
+function AuthNavigator() {
+  const colors = useColors();
+  return (
+    <AuthStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: { fontWeight: "700", fontSize: 17 },
+        headerBackTitle: "",
+      }}
+    >
+      <AuthStack.Screen name="EmailEntry" component={EmailEntryScreen} options={{ headerShown: false }} />
+      <AuthStack.Screen name="Otp" component={OtpScreen} options={{ title: "" }} />
+      <AuthStack.Screen name="Username" component={UsernameScreen} options={{ title: "" }} />
+    </AuthStack.Navigator>
+  );
+}
 
 export type TabParamList = {
   Planner: undefined;
@@ -47,15 +79,23 @@ function RecipesStackNavigator() {
   const colors = useColors();
   return (
     <RecipesStack.Navigator
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         headerStyle: { backgroundColor: colors.background },
         headerShadowVisible: false,
         headerTintColor: colors.textPrimary,
         headerTitleStyle: { fontWeight: "700", fontSize: 17 },
-      }}
+        headerRight: () => (
+          <TouchableOpacity
+            onPress={() => navigation.getParent()?.getParent()?.navigate("Account" as never)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="person-circle-outline" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+        ),
+      })}
     >
       <RecipesStack.Screen name="RecipesList" component={RecipesScreen} options={{ title: "Recipes" }} />
-      <RecipesStack.Screen name="AddEditRecipe" component={AddEditRecipeScreen} />
+      <RecipesStack.Screen name="AddEditRecipe" component={AddEditRecipeScreen} options={{ headerRight: undefined }} />
     </RecipesStack.Navigator>
   );
 }
@@ -94,7 +134,7 @@ function TabNavigator() {
   const colors = useColors();
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({ route, navigation }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = "ellipse";
           if (route.name === "Planner") iconName = focused ? "today" : "today-outline";
@@ -118,6 +158,14 @@ function TabNavigator() {
         headerShadowVisible: false,
         headerTintColor: colors.textPrimary,
         headerTitleStyle: { fontWeight: "700", fontSize: 17 },
+        headerRight: () => (
+          <TouchableOpacity
+            onPress={() => navigation.getParent()?.navigate("Account" as never)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="person-circle-outline" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+        ),
       })}
     >
       <Tab.Screen name="Planner" component={PlannerStackNavigator} options={{ title: "Planner", headerShown: false }} />
@@ -128,9 +176,35 @@ function TabNavigator() {
   );
 }
 
-export default function App() {
+export type RootStackParamList = {
+  Tabs: undefined;
+  Account: undefined;
+};
+
+const RootStack = createNativeStackNavigator<RootStackParamList>();
+
+function RootNavigator() {
+  const colors = useColors();
+  return (
+    <RootStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: { fontWeight: "700", fontSize: 17 },
+        headerBackTitle: "",
+      }}
+    >
+      <RootStack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
+      <RootStack.Screen name="Account" component={AccountScreen} options={{ title: "Account" }} />
+    </RootStack.Navigator>
+  );
+}
+
+function AppContent() {
   const colors = useColors();
   const scheme = useColorScheme();
+  const { isLoading, isAuthenticated } = useAuth();
   // @expo/vector-icons registers Ionicons under the lowercase family name
   // "ionicons" (see createIconSet(glyphMap, "ionicons", font) in its source),
   // and Font.isLoaded() checks that exact lowercase key. Loading it
@@ -141,12 +215,12 @@ export default function App() {
   });
 
   const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded || fontError) {
+    if ((fontsLoaded || fontError) && !isLoading) {
       await SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, isLoading]);
 
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || isLoading) {
     return null;
   }
 
@@ -165,14 +239,22 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <NavigationContainer theme={navigationTheme}>
-            <TabNavigator />
-          </NavigationContainer>
-          <StatusBar style="auto" />
-        </SafeAreaProvider>
-      </QueryClientProvider>
+      <SafeAreaProvider>
+        <NavigationContainer theme={navigationTheme}>
+          {isAuthenticated ? <RootNavigator /> : <AuthNavigator />}
+        </NavigationContainer>
+        <StatusBar style="auto" />
+      </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

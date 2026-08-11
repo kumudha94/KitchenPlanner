@@ -84,6 +84,12 @@ export default function PlannerScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.weekArrow} hitSlop={TAP_SLOP} onPress={() => setSelectedDay((d) => addWeeks(d, 1))}>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
+          <TouchableOpacity
+            hitSlop={TAP_SLOP}
+            onPress={() => navigation.getParent()?.getParent()?.navigate("Account" as never)}
+          >
+            <Ionicons name="person-circle-outline" size={26} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
       </View>
 

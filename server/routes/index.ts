@@ -4,16 +4,23 @@ import { recipesRouter } from "./recipes";
 import { mealPlannerRouter } from "./mealPlanner";
 import { groceryRouter } from "./grocery";
 import { prepLogRouter } from "./prepLog";
+import { authRouter } from "./auth";
+import { requireAuth } from "../middleware/requireAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
   });
 
-  app.use("/api/recipes", recipesRouter);
-  app.use("/api/meal-plan", mealPlannerRouter);
-  app.use("/api/grocery", groceryRouter);
-  app.use("/api/prep-log", prepLogRouter);
+  app.use("/api/auth", authRouter);
+
+  // Everything below requires a logged-in session. This app still has a
+  // single shared dataset (no per-user data isolation) — auth is a gate on
+  // who can use the app, not a multi-tenant boundary.
+  app.use("/api/recipes", requireAuth, recipesRouter);
+  app.use("/api/meal-plan", requireAuth, mealPlannerRouter);
+  app.use("/api/grocery", requireAuth, groceryRouter);
+  app.use("/api/prep-log", requireAuth, prepLogRouter);
 
   return createServer(app);
 }
