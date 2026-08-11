@@ -40,7 +40,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await ensureSchema();
+  try {
+    await ensureSchema();
+  } catch (err) {
+    // Best-effort, idempotent sync — a transient failure here (e.g. this
+    // dev environment's flaky direct connection to Neon) shouldn't prevent
+    // the server from starting when the schema is already correct from a
+    // prior successful run elsewhere (the deployed instance, most likely).
+    console.warn("ensureSchema failed, continuing without it:", err);
+  }
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

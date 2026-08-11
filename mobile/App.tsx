@@ -1,13 +1,12 @@
 import "react-native-gesture-handler";
-import { useCallback, useEffect, useState } from "react";
-import { useColorScheme, View, Text } from "react-native";
+import { useCallback } from "react";
+import { useColorScheme } from "react-native";
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFonts } from "expo-font";
-import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -129,57 +128,6 @@ function TabNavigator() {
   );
 }
 
-// TEMPORARY diagnostic overlay — remove once the icon-rendering issue is
-// confirmed fixed on a real device. Reports ground truth from the device
-// itself since no emulator/device log access is available in this
-// environment: what useFonts() returned, what a direct Font.loadAsync()
-// call does (with its actual error, if any), and what Font.isLoaded()
-// reports for the exact key @expo/vector-icons checks internally.
-function FontDebugBadge({
-  fontsLoaded,
-  fontError,
-}: {
-  fontsLoaded: boolean;
-  fontError: Error | null | undefined;
-}) {
-  const [manualError, setManualError] = useState<string | null>(null);
-  const [manualDone, setManualDone] = useState(false);
-  const [isLoadedResult, setIsLoadedResult] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    Font.loadAsync({
-      ionicons: require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf"),
-    })
-      .then(() => setManualDone(true))
-      .catch((e: Error) => setManualError(e?.message || String(e)))
-      .finally(() => setIsLoadedResult(Font.isLoaded("ionicons")));
-  }, []);
-
-  return (
-    <View
-      style={{
-        position: "absolute",
-        top: 40,
-        left: 8,
-        right: 8,
-        backgroundColor: "#000000dd",
-        padding: 10,
-        borderRadius: 8,
-        zIndex: 9999,
-      }}
-      pointerEvents="none"
-    >
-      <Text style={{ color: "#fff", fontSize: 11, fontFamily: undefined }}>
-        useFonts: loaded={String(fontsLoaded)} error={fontError ? fontError.message : "none"}
-        {"\n"}
-        manual loadAsync: done={String(manualDone)} error={manualError ?? "none"}
-        {"\n"}
-        Font.isLoaded('ionicons')={String(isLoadedResult)}
-      </Text>
-    </View>
-  );
-}
-
 export default function App() {
   const colors = useColors();
   const scheme = useColorScheme();
@@ -225,7 +173,6 @@ export default function App() {
           <StatusBar style="auto" />
         </SafeAreaProvider>
       </QueryClientProvider>
-      <FontDebugBadge fontsLoaded={fontsLoaded} fontError={fontError} />
     </GestureHandlerRootView>
   );
 }
