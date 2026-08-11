@@ -14,15 +14,15 @@ process.on("unhandledRejection", (reason) => {
 });
 
 const app = express();
-const isDev = process.env.NODE_ENV === "development";
 
+// No session/cookie-based auth exists in this app (single-user, no login),
+// so there's no credentialed cross-origin request to protect against —
+// restricting origins here would only block legitimate clients (the mobile
+// app has no origin at all; the web preview build needs its dev-server
+// origin allowed) without reducing any actual attack surface.
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || isDev) return callback(null, true);
-      callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
+    origin: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type"],
   })
