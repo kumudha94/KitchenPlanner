@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../lib/api";
+import { uploadImage } from "../lib/upload";
 import type { InsertRecipe, Recipe, RecipeIngredient, MealType } from "../lib/types";
 import type { RecipesStackParamList } from "../../App";
 import { useColors, radii, spacing, type ThemeColors } from "../theme";
@@ -33,6 +35,7 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     if (existing) {
@@ -112,8 +115,55 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
     setTags((prev) => prev.filter((x) => x !== t));
   }
 
+  async function pickAndUploadImage() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission needed", "Allow photo library access to add a recipe photo.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    setIsUploadingImage(true);
+    try {
+      const fileName = asset.fileName || `recipe-${Date.now()}.jpg`;
+      const mimeType = asset.mimeType || "image/jpeg";
+      const url = await uploadImage(asset.uri, fileName, mimeType);
+      setImageUrl(url);
+    } catch (error) {
+      Alert.alert("Could not upload photo", error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
+      <TouchableOpacity style={styles.photoHero} activeOpacity={0.8} onPress={pickAndUploadImage} disabled={isUploadingImage}>
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.photoHeroImage} />
+        ) : (
+          <View style={styles.photoHeroPlaceholder}>
+            <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
+          </View>
+        )}
+        <View style={styles.photoHeroButton}>
+          {isUploadingImage ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Ionicons name="camera" size={16} color={colors.white} />
+          )}
+          <Text style={styles.photoHeroButtonText}>{imageUrl ? "Change photo" : "Add photo"}</Text>
+        </View>
+      </TouchableOpacity>
+
       <Text style={styles.label}>Name</Text>
       <TextInput
         style={styles.input}
@@ -178,18 +228,6 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
           ))}
         </View>
       )}
-
-      <Text style={styles.label}>Image URL (optional)</Text>
-      <TextInput
-        style={styles.input}
-        value={imageUrl}
-        onChangeText={setImageUrl}
-        placeholder="https://…"
-        placeholderTextColor={colors.textMuted}
-        autoCapitalize="none"
-        keyboardType="url"
-      />
-      {imageUrl.trim() ? <Image source={{ uri: imageUrl.trim() }} style={styles.imagePreview} /> : null}
 
       <Text style={styles.label}>Ingredients</Text>
       {ingredients.map((ing, index) => (
@@ -306,7 +344,29 @@ const makeStyles = (colors: ThemeColors) =>
     borderRadius: radii.full,
   },
   tagChipText: { fontSize: 13, color: colors.accentDark, fontWeight: "600" },
-  imagePreview: { width: "100%", height: 140, borderRadius: radii.md, marginTop: spacing.sm, backgroundColor: colors.surfaceAlt },
+  photoHero: {
+    width: "100%",
+    height: 160,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceAlt,
+    overflow: "hidden",
+    marginBottom: spacing.sm,
+  },
+  photoHeroImage: { width: "100%", height: "100%" },
+  photoHeroPlaceholder: { flex: 1, justifyContent: "center", alignItems: "center" },
+  photoHeroButton: {
+    position: "absolute",
+    right: 10,
+    bottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radii.full,
+  },
+  photoHeroButtonText: { color: colors.white, fontSize: 12, fontWeight: "700" },
   ingredientRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   addRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
   addRowText: { color: colors.accent, marginLeft: 6, fontSize: 14, fontWeight: "600" },

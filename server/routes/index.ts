@@ -5,6 +5,7 @@ import { mealPlannerRouter } from "./mealPlanner";
 import { groceryRouter } from "./grocery";
 import { prepLogRouter } from "./prepLog";
 import { authRouter } from "./auth";
+import { uploadRouter } from "./upload";
 import { requireAuth } from "../middleware/requireAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -21,6 +22,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/meal-plan", requireAuth, mealPlannerRouter);
   app.use("/api/grocery", requireAuth, groceryRouter);
   app.use("/api/prep-log", requireAuth, prepLogRouter);
+  app.use("/api/upload", requireAuth, uploadRouter);
 
   return createServer(app);
 }

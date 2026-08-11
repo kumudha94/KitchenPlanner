@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { View, Text, Switch, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { apiRequest } from "../lib/api";
-import { requestNotificationPermission } from "../lib/notifications";
+import { requestNotificationPermission, scheduleDailyReminder, cancelDailyReminder } from "../lib/notifications";
 import { useAuth } from "../contexts/AuthContext";
 import { useColors, radii, spacing, type, type ThemeColors } from "../theme";
 import type { User } from "../lib/types";
@@ -30,6 +30,14 @@ export default function AccountScreen() {
     onError: (error: Error) => Alert.alert("Could not delete account", error.message),
   });
 
+  // If the preference is already on (e.g. after a reinstall), make sure the
+  // OS-level schedule actually exists — it doesn't survive a fresh install.
+  useEffect(() => {
+    if (user?.notificationsEnabled) {
+      scheduleDailyReminder();
+    }
+  }, [user?.notificationsEnabled]);
+
   async function handleToggleNotifications(value: boolean) {
     if (value) {
       const granted = await requestNotificationPermission();
@@ -37,6 +45,9 @@ export default function AccountScreen() {
         Alert.alert("Permission needed", "Enable notifications for KitchenPlanner in your phone's settings to turn this on.");
         return;
       }
+      await scheduleDailyReminder();
+    } else {
+      await cancelDailyReminder();
     }
     updateMutation.mutate({ notificationsEnabled: value });
   }
@@ -69,7 +80,7 @@ export default function AccountScreen() {
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
           <Text style={styles.label}>Show notifications</Text>
-          <Text style={styles.helperText}>Reminders so you don't forget your planned meals.</Text>
+          <Text style={styles.helperText}>Daily reminder at 6 PM to check your plan.</Text>
         </View>
         <Switch
           value={user.notificationsEnabled}
