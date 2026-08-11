@@ -71,6 +71,14 @@ export default function PrepLogScreen() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prep-log", tomorrowStr] }),
   });
 
+  function handleAdd() {
+    if (!description.trim()) {
+      Alert.alert("Add at least a task description to add a prep task");
+      return;
+    }
+    addMutation.mutate();
+  }
+
   return (
     <FlatList
       style={styles.container}
@@ -107,14 +115,10 @@ export default function PrepLogScreen() {
               onChangeText={setDescription}
               placeholder="e.g. Marinate chicken, soak rice…"
               placeholderTextColor={colors.textMuted}
-              onSubmitEditing={() => description.trim() && addMutation.mutate()}
+              onSubmitEditing={handleAdd}
               returnKeyType="done"
             />
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => description.trim() && addMutation.mutate()}
-              disabled={!description.trim() || addMutation.isPending}
-            >
+            <TouchableOpacity style={styles.addButton} onPress={handleAdd} disabled={addMutation.isPending}>
               <Ionicons name="add" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>

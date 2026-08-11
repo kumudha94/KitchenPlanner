@@ -1,5 +1,14 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import dns from "dns";
+
+// Some environments (this project's dev sandbox included) have no IPv6
+// route at all, but Node's default DNS result order can still hand back
+// an IPv6 address first for hosts that publish both — every connection
+// then hangs until it times out rather than falling back to the (working)
+// IPv4 address. Preferring IPv4 first is a safe no-op anywhere IPv6
+// actually works, so this isn't dev-environment-specific code.
+dns.setDefaultResultOrder("ipv4first");
 
 const { Pool } = pg;
 

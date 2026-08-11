@@ -68,6 +68,14 @@ export default function GroceryScreen() {
 
   const hasChecked = items?.some((i: GroceryItem) => i.checked);
 
+  function handleAdd() {
+    if (!name.trim()) {
+      Alert.alert("Add at least an item name to add a grocery item");
+      return;
+    }
+    addMutation.mutate();
+  }
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -89,7 +97,7 @@ export default function GroceryScreen() {
           onChangeText={setName}
           placeholder="Add an item…"
           placeholderTextColor={colors.textMuted}
-          onSubmitEditing={() => name.trim() && addMutation.mutate()}
+          onSubmitEditing={handleAdd}
           returnKeyType="done"
         />
         <TextInput
@@ -99,11 +107,7 @@ export default function GroceryScreen() {
           placeholder="Qty"
           placeholderTextColor={colors.textMuted}
         />
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => name.trim() && addMutation.mutate()}
-          disabled={!name.trim() || addMutation.isPending}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={handleAdd} disabled={addMutation.isPending}>
           <Ionicons name="add" size={20} color={colors.white} />
         </TouchableOpacity>
       </View>
