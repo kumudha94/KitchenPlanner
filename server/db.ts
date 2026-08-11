@@ -24,4 +24,24 @@ export async function ensureSchema(): Promise<void> {
   await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS prep_time_minutes integer`);
   await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]'::jsonb`);
   await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS image_url varchar(500)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS grocery_items (
+      id serial PRIMARY KEY,
+      name varchar(150) NOT NULL,
+      quantity varchar(50),
+      checked boolean NOT NULL DEFAULT false,
+      created_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS prep_tasks (
+      id serial PRIMARY KEY,
+      description varchar(200) NOT NULL,
+      for_date varchar(10) NOT NULL,
+      checked boolean NOT NULL DEFAULT false,
+      created_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
 }

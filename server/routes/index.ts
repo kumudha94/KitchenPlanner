@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { recipesRouter } from "./recipes";
 import { mealPlannerRouter } from "./mealPlanner";
+import { groceryRouter } from "./grocery";
+import { prepLogRouter } from "./prepLog";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (_req, res) => {
@@ -10,6 +12,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.use("/api/recipes", recipesRouter);
   app.use("/api/meal-plan", mealPlannerRouter);
+  app.use("/api/grocery", groceryRouter);
+  app.use("/api/prep-log", prepLogRouter);
 
   return createServer(app);
 }

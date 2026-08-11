@@ -36,3 +36,19 @@ export type MealPlanEntry = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type GroceryItem = {
+  id: number;
+  name: string;
+  quantity: string | null;
+  checked: boolean;
+  createdAt: string;
+};
+
+export type PrepTask = {
+  id: number;
+  description: string;
+  forDate: string;
+  checked: boolean;
+  createdAt: string;
+};

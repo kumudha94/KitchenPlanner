@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, serial, varchar, text, timestamp, jsonb, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, jsonb, integer, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -64,3 +64,35 @@ export const mealPlanEntries = pgTable(
 );
 
 export type MealPlanEntry = typeof mealPlanEntries.$inferSelect;
+
+export const groceryItems = pgTable("grocery_items", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 150 }).notNull(),
+  quantity: varchar("quantity", { length: 50 }),
+  checked: boolean("checked").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertGroceryItemSchema = z.object({
+  name: z.string().min(1, "Item name is required"),
+  quantity: z.string().nullable().optional(),
+});
+
+export type InsertGroceryItem = z.infer<typeof insertGroceryItemSchema>;
+export type GroceryItem = typeof groceryItems.$inferSelect;
+
+export const prepTasks = pgTable("prep_tasks", {
+  id: serial("id").primaryKey(),
+  description: varchar("description", { length: 200 }).notNull(),
+  forDate: varchar("for_date", { length: 10 }).notNull(),
+  checked: boolean("checked").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPrepTaskSchema = z.object({
+  description: z.string().min(1, "Task description is required"),
+  forDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "forDate must be YYYY-MM-DD"),
+});
+
+export type InsertPrepTask = z.infer<typeof insertPrepTaskSchema>;
+export type PrepTask = typeof prepTasks.$inferSelect;
