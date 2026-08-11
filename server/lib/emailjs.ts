@@ -19,7 +19,15 @@ if (!isEmailjsConfigured) {
 }
 
 export async function sendOtpEmail(email: string, code: string, expiresAt: Date): Promise<void> {
-  const expiryTime = expiresAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  // The server runs in UTC (Render), but the app is for an IST user —
+  // without an explicit timeZone, toLocaleTimeString uses the server's
+  // zone, showing a time hours off from what the recipient actually sees
+  // on their clock.
+  const expiryTime = expiresAt.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata",
+  });
 
   if (!isEmailjsConfigured) {
     // Logged server-side only, never returned to the client — lets auth be
