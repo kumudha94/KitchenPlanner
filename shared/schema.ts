@@ -113,6 +113,27 @@ export const insertPantryItemSchema = z.object({
 export type InsertPantryItem = z.infer<typeof insertPantryItemSchema>;
 export type PantryItem = typeof pantryItems.$inferSelect;
 
+export const reminders = pgTable("reminders", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 150 }).notNull(),
+  hour: integer("hour").notNull(),
+  minute: integer("minute").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertReminderSchema = z.object({
+  title: z.string().trim().min(1, "Reminder title is required").max(150),
+  hour: z.number().int().min(0).max(23),
+  minute: z.number().int().min(0).max(59),
+  enabled: z.boolean().default(true),
+});
+
+export const updateReminderSchema = insertReminderSchema.partial();
+
+export type InsertReminder = z.infer<typeof insertReminderSchema>;
+export type Reminder = typeof reminders.$inferSelect;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull(),

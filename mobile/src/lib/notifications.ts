@@ -25,9 +25,8 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return result.granted;
 }
 
-// One repeating daily reminder at a fixed time — simple on purpose. Per-meal
-// or user-configurable reminder times are a reasonable future addition, not
-// built here.
+// One repeating daily reminder at a fixed time — the "check today's plan"
+// nudge tied to the master Show notifications toggle.
 export async function scheduleDailyReminder(): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(REMINDER_IDENTIFIER).catch(() => {});
   await Notifications.scheduleNotificationAsync({
@@ -46,4 +45,28 @@ export async function scheduleDailyReminder(): Promise<void> {
 
 export async function cancelDailyReminder(): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(REMINDER_IDENTIFIER).catch(() => {});
+}
+
+// User-defined reminders (e.g. "6 AM take pill") — each gets its own daily
+// repeating notification, independent of the meal-plan reminder above.
+function customReminderIdentifier(id: number): string {
+  return `kitchenplanner-reminder-${id}`;
+}
+
+export async function scheduleCustomReminder(reminder: { id: number; title: string; hour: number; minute: number }): Promise<void> {
+  const identifier = customReminderIdentifier(reminder.id);
+  await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
+  await Notifications.scheduleNotificationAsync({
+    identifier,
+    content: { title: "KitchenPlanner", body: reminder.title },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: reminder.hour,
+      minute: reminder.minute,
+    },
+  });
+}
+
+export async function cancelCustomReminder(id: number): Promise<void> {
+  await Notifications.cancelScheduledNotificationAsync(customReminderIdentifier(id)).catch(() => {});
 }

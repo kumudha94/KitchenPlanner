@@ -56,6 +56,17 @@ export async function ensureSchema(): Promise<void> {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS reminders (
+      id serial PRIMARY KEY,
+      title varchar(150) NOT NULL,
+      hour integer NOT NULL,
+      minute integer NOT NULL,
+      enabled boolean NOT NULL DEFAULT true,
+      created_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
+
   // Prep Log was removed as a standalone feature — it never connected to the
   // rest of the app and the same "get ready to cook" need is better served by
   // the recipe itself plus the grocery list. Dropping the now-orphaned table.

@@ -70,6 +70,22 @@ export type PantryItem = {
   createdAt: string;
 };
 
+export type Reminder = {
+  id: number;
+  title: string;
+  hour: number;
+  minute: number;
+  enabled: boolean;
+  createdAt: string;
+};
+
+export type InsertReminder = {
+  title: string;
+  hour: number;
+  minute: number;
+  enabled?: boolean;
+};
+
 export type User = {
   id: number;
   email: string;
