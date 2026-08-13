@@ -15,16 +15,17 @@ process.on("unhandledRejection", (reason) => {
 
 const app = express();
 
-// No session/cookie-based auth exists in this app (single-user, no login),
-// so there's no credentialed cross-origin request to protect against —
-// restricting origins here would only block legitimate clients (the mobile
-// app has no origin at all; the web preview build needs its dev-server
-// origin allowed) without reducing any actual attack surface.
+// Auth is bearer-token (Authorization header), not cookie/session-based, so
+// there's no ambient credential a cross-origin page could ride on — allowing
+// any origin doesn't add a CSRF-style risk here. Restricting origins would
+// only block legitimate clients (the mobile app has no origin at all; the
+// web preview build needs its dev-server origin allowed) without reducing
+// any actual attack surface.
 app.use(
   cors({
     origin: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(express.json());
