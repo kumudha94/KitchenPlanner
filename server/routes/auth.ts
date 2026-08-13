@@ -55,6 +55,29 @@ authRouter.post("/verify-otp", async (req, res, next) => {
   }
 });
 
+// Dev-only shortcut so local testing doesn't require the real email OTP
+// round trip every time. Signs in as whichever account already exists (this
+// is a single-user app). Compiled into every build, but `npm run start`
+// always sets NODE_ENV=production (Render's start command), so it 404s on
+// anything but a local `npm run dev` — there is no way to reach this on the
+// deployed backend.
+authRouter.post(
+  "/dev-login",
+  wrap(async (_req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const user = await authStorage.findFirstUser();
+    if (!user) {
+      res.status(400).json({ error: "No account exists yet — sign in with email once first." });
+      return;
+    }
+    const token = signSessionToken({ userId: user.id, email: user.email });
+    res.json({ token, user });
+  })
+);
+
 authRouter.post("/complete-signup", async (req, res, next) => {
   try {
     const { email, username, signupToken } = completeSignupSchema.parse(req.body);

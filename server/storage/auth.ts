@@ -14,6 +14,11 @@ export async function findUserById(id: number): Promise<User | undefined> {
   return user;
 }
 
+export async function findFirstUser(): Promise<User | undefined> {
+  const [user] = await db.select().from(users).orderBy(users.id).limit(1);
+  return user;
+}
+
 export async function createUser(email: string, username: string): Promise<User> {
   const [user] = await db.insert(users).values({ email, username }).returning();
   return user;

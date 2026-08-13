@@ -4,20 +4,30 @@ import { useMutation } from "@tanstack/react-query";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../../lib/api";
+import { useAuth } from "../../contexts/AuthContext";
 import { useColors, radii, spacing, type, type ThemeColors } from "../../theme";
 import type { AuthStackParamList } from "../../../App";
+import type { User } from "../../lib/types";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "EmailEntry">;
 
 export default function EmailEntryScreen({ navigation }: Props) {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
 
   const sendOtpMutation = useMutation({
     mutationFn: () => apiRequest<{ sent: boolean }>("/api/auth/request-otp", { method: "POST", body: JSON.stringify({ email: email.trim() }) }),
     onSuccess: () => navigation.navigate("Otp", { email: email.trim() }),
     onError: (error: Error) => Alert.alert("Could not send code", error.message),
+  });
+
+  const devLoginMutation = useMutation({
+    mutationFn: () => apiRequest<{ token: string; user: User }>("/api/auth/dev-login", { method: "POST" }),
+    onSuccess: (result) => login(result.token, result.user),
+    onError: (error: Error) =>
+      Alert.alert("Can't skip login", `${error.message}\n\nThis only works against a local backend running "npm run dev".`),
   });
 
   function handleSubmit() {
@@ -54,6 +64,16 @@ export default function EmailEntryScreen({ navigation }: Props) {
       <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={sendOtpMutation.isPending}>
         <Text style={styles.buttonText}>{sendOtpMutation.isPending ? "Sending…" : "Send code"}</Text>
       </TouchableOpacity>
+
+      {__DEV__ ? (
+        <TouchableOpacity
+          style={styles.skipLink}
+          onPress={() => devLoginMutation.mutate()}
+          disabled={devLoginMutation.isPending}
+        >
+          <Text style={styles.skipLinkText}>{devLoginMutation.isPending ? "Skipping…" : "Skip for now"}</Text>
+        </TouchableOpacity>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -91,4 +111,6 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
     },
     buttonText: { color: colors.white, fontWeight: "700", fontSize: 15 },
+    skipLink: { alignItems: "center", paddingVertical: spacing.md },
+    skipLinkText: { color: colors.textMuted, fontSize: 13, fontWeight: "500" },
   });
