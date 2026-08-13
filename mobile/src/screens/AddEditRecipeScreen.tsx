@@ -32,6 +32,7 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([{ name: "", quantity: "" }]);
   const [notes, setNotes] = useState("");
   const [prepTime, setPrepTime] = useState("");
+  const [servings, setServings] = useState("4");
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -44,6 +45,7 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
       setIngredients(existing.ingredients.length ? existing.ingredients : [{ name: "", quantity: "" }]);
       setNotes(existing.notes ?? "");
       setPrepTime(existing.prepTimeMinutes ? String(existing.prepTimeMinutes) : "");
+      setServings(String(existing.servings));
       setTags(existing.tags ?? []);
       setImageUrl(existing.imageUrl ?? "");
     }
@@ -81,13 +83,15 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
       return;
     }
     const cleanIngredients = ingredients.filter((i) => i.name.trim().length > 0 && i.quantity.trim().length > 0);
-    const parsedPrepTime = prepTime.trim() ? parseInt(prepTime.trim(), 10) : null;
+    const parsedPrepTime = prepTime.trim() ? Number.parseInt(prepTime.trim(), 10) : null;
+    const parsedServings = Number.parseInt(servings.trim(), 10);
     saveMutation.mutate({
       name: name.trim(),
       mealType: mealType ?? null,
       ingredients: cleanIngredients,
       notes: notes.trim() || null,
       prepTimeMinutes: parsedPrepTime && parsedPrepTime > 0 ? parsedPrepTime : null,
+      servings: Number.isFinite(parsedServings) && parsedServings > 0 ? parsedServings : 4,
       tags,
       imageUrl: imageUrl.trim() || null,
     });
@@ -193,12 +197,26 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
             <TextInput
               style={styles.inputInner}
               value={prepTime}
-              onChangeText={(v) => setPrepTime(v.replace(/[^0-9]/g, ""))}
+              onChangeText={(v) => setPrepTime(v.replace(/\D/g, ""))}
               placeholder="15"
               placeholderTextColor={colors.textMuted}
               keyboardType="number-pad"
             />
             <Text style={styles.suffix}>min</Text>
+          </View>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.label}>Servings</Text>
+          <View style={styles.inputWithSuffix}>
+            <TextInput
+              style={styles.inputInner}
+              value={servings}
+              onChangeText={(v) => setServings(v.replace(/\D/g, ""))}
+              placeholder="4"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="number-pad"
+            />
+            <Text style={styles.suffix}>people</Text>
           </View>
         </View>
       </View>

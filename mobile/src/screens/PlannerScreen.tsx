@@ -65,6 +65,13 @@ export default function PlannerScreen({ navigation }: Props) {
     setSelectedDay(new Date());
   }
 
+  const weekSummary = useMemo(() => {
+    if (!entries) return null;
+    const filledSlots = entries.filter((e: MealPlanEntry) => e.recipeNameSnapshot || e.note).length;
+    const totalSlots = weekDays.length * SLOTS.length;
+    return { filledSlots, totalSlots };
+  }, [entries, weekDays.length]);
+
   return (
     <ScrollView
       style={styles.container}
@@ -118,8 +125,15 @@ export default function PlannerScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.heroRow}>
-        <Text style={styles.heroTitle}>{onToday ? "Today" : format(selectedDay, "EEEE")}</Text>
-        <Text style={styles.heroSubtitle}>{format(selectedDay, "MMMM d, yyyy")}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.heroTitle}>{onToday ? "Today" : format(selectedDay, "EEEE")}</Text>
+          <Text style={styles.heroSubtitle}>{format(selectedDay, "MMMM d, yyyy")}</Text>
+        </View>
+        {weekSummary ? (
+          <Text style={styles.weekSummary}>
+            {weekSummary.filledSlots}/{weekSummary.totalSlots} planned
+          </Text>
+        ) : null}
       </View>
 
       {entriesLoading ? (
@@ -241,9 +255,10 @@ const makeStyles = (colors: ThemeColors) =>
     dayChipTextSelected: { color: colors.white },
     dayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: "transparent" },
 
-    heroRow: { marginBottom: spacing.md },
+    heroRow: { flexDirection: "row", alignItems: "flex-end", marginBottom: spacing.md },
     heroTitle: { ...type.hero, color: colors.textPrimary },
     heroSubtitle: { ...type.subtitle, color: colors.textSecondary, marginTop: 2 },
+    weekSummary: { fontSize: 12, fontWeight: "600", color: colors.textMuted, marginBottom: 4 },
 
     slots: { gap: spacing.sm },
     slotCard: {

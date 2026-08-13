@@ -13,11 +13,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import RecipesScreen from "./src/screens/RecipesScreen";
+import RecipeDetailScreen from "./src/screens/RecipeDetailScreen";
 import AddEditRecipeScreen from "./src/screens/AddEditRecipeScreen";
 import PlannerScreen from "./src/screens/PlannerScreen";
 import SlotEditorScreen from "./src/screens/SlotEditorScreen";
 import GroceryScreen from "./src/screens/GroceryScreen";
-import PrepLogScreen from "./src/screens/PrepLogScreen";
 import AccountScreen from "./src/screens/AccountScreen";
 import EmailEntryScreen from "./src/screens/auth/EmailEntryScreen";
 import OtpScreen from "./src/screens/auth/OtpScreen";
@@ -65,11 +65,11 @@ export type TabParamList = {
   Planner: undefined;
   Recipes: undefined;
   Grocery: undefined;
-  PrepLog: undefined;
 };
 
 export type RecipesStackParamList = {
   RecipesList: undefined;
+  RecipeDetail: { recipeId: number };
   AddEditRecipe: { recipeId?: number };
 };
 
@@ -95,6 +95,7 @@ function RecipesStackNavigator() {
       })}
     >
       <RecipesStack.Screen name="RecipesList" component={RecipesScreen} options={{ title: "Recipes" }} />
+      <RecipesStack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={{ title: "" }} />
       <RecipesStack.Screen name="AddEditRecipe" component={AddEditRecipeScreen} options={{ headerRight: undefined }} />
     </RecipesStack.Navigator>
   );
@@ -140,7 +141,6 @@ function TabNavigator() {
           if (route.name === "Planner") iconName = focused ? "today" : "today-outline";
           else if (route.name === "Recipes") iconName = focused ? "book" : "book-outline";
           else if (route.name === "Grocery") iconName = focused ? "cart" : "cart-outline";
-          else if (route.name === "PrepLog") iconName = focused ? "flame" : "flame-outline";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: colors.accent,
@@ -171,7 +171,6 @@ function TabNavigator() {
       <Tab.Screen name="Planner" component={PlannerStackNavigator} options={{ title: "Planner", headerShown: false }} />
       <Tab.Screen name="Recipes" component={RecipesStackNavigator} options={{ title: "Recipes", headerShown: false }} />
       <Tab.Screen name="Grocery" component={GroceryScreen} options={{ title: "Grocery" }} />
-      <Tab.Screen name="PrepLog" component={PrepLogScreen} options={{ title: "Prep Log" }} />
     </Tab.Navigator>
   );
 }

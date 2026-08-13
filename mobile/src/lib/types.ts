@@ -10,8 +10,10 @@ export type Recipe = {
   ingredients: RecipeIngredient[];
   notes: string | null;
   prepTimeMinutes: number | null;
+  servings: number;
   tags: string[];
   imageUrl: string | null;
+  isFavorite: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -22,8 +24,10 @@ export type InsertRecipe = {
   ingredients: RecipeIngredient[];
   notes?: string | null;
   prepTimeMinutes?: number | null;
+  servings?: number;
   tags?: string[];
   imageUrl?: string | null;
+  isFavorite?: boolean;
 };
 
 export type MealPlanEntry = {
@@ -37,19 +41,32 @@ export type MealPlanEntry = {
   updatedAt: string;
 };
 
+export const GROCERY_CATEGORIES = [
+  "Produce",
+  "Dairy & Eggs",
+  "Meat & Seafood",
+  "Bakery",
+  "Frozen",
+  "Pantry",
+  "Other",
+] as const;
+export type GroceryCategory = (typeof GROCERY_CATEGORIES)[number];
+
 export type GroceryItem = {
   id: number;
   name: string;
   quantity: string | null;
+  category: GroceryCategory;
   checked: boolean;
   createdAt: string;
 };
 
-export type PrepTask = {
+export type FromPlanResult = { added: GroceryItem[]; skippedInPantry: number };
+
+export type PantryItem = {
   id: number;
-  description: string;
-  forDate: string;
-  checked: boolean;
+  name: string;
+  category: GroceryCategory;
   createdAt: string;
 };
 

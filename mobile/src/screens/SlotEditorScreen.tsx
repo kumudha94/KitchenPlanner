@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, FlatList, Image, ScrollView, StyleSheet, Alert } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -28,6 +28,11 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
   const { data: recipes } = useQuery({
     queryKey: ["recipes"],
     queryFn: () => apiRequest<Recipe[]>("/api/recipes"),
+  });
+
+  const { data: recentlyUsed } = useQuery({
+    queryKey: ["recipes", "recently-used"],
+    queryFn: () => apiRequest<Recipe[]>("/api/recipes/recently-used?limit=8"),
   });
 
   const [search, setSearch] = useState("");
@@ -60,6 +65,13 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
     },
     onError: (error: Error) => Alert.alert("Could not clear slot", error.message),
   });
+
+  const quickPicks = useMemo(() => {
+    const favorites = (recipes ?? []).filter((r: Recipe) => r.isFavorite);
+    const favoriteIds = new Set(favorites.map((r: Recipe) => r.id));
+    const recent = (recentlyUsed ?? []).filter((r: Recipe) => !favoriteIds.has(r.id));
+    return [...favorites, ...recent].slice(0, 8);
+  }, [recipes, recentlyUsed]);
 
   const filteredRecipes = useMemo(() => {
     let list = recipes ?? [];
@@ -98,6 +110,35 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {quickPicks.length > 0 && !search.trim() ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.quickRow}
+          contentContainerStyle={{ gap: 10 }}
+        >
+          {quickPicks.map((r) => (
+            <TouchableOpacity key={r.id} style={styles.quickCard} onPress={() => saveMutation.mutate(r.id)}>
+              {r.imageUrl ? (
+                <Image source={{ uri: r.imageUrl }} style={styles.quickThumb} />
+              ) : (
+                <View style={[styles.quickThumb, styles.quickThumbFallback]}>
+                  <Ionicons name="restaurant" size={16} color={colors.accent} />
+                </View>
+              )}
+              {r.isFavorite ? (
+                <View style={styles.quickStar}>
+                  <Ionicons name="star" size={10} color={colors.white} />
+                </View>
+              ) : null}
+              <Text style={styles.quickName} numberOfLines={1}>
+                {r.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      ) : null}
+
       <View style={styles.searchRow}>
         <Ionicons name="search" size={17} color={colors.textMuted} />
         <TextInput
@@ -162,6 +203,25 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
   label: { ...type.label, color: colors.textSecondary, marginBottom: spacing.sm },
+
+  quickRow: { marginBottom: spacing.md, flexGrow: 0 },
+  quickCard: { width: 68, alignItems: "center" },
+  quickThumb: { width: 52, height: 52, borderRadius: radii.full },
+  quickThumbFallback: { backgroundColor: colors.accentSoft, justifyContent: "center", alignItems: "center" },
+  quickStar: {
+    position: "absolute",
+    top: -2,
+    right: 6,
+    width: 16,
+    height: 16,
+    borderRadius: radii.full,
+    backgroundColor: colors.breakfast,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: colors.background,
+  },
+  quickName: { fontSize: 11, fontWeight: "600", color: colors.textPrimary, textAlign: "center", marginTop: 4 },
 
   searchRow: {
     flexDirection: "row",

@@ -1,17 +1,64 @@
 import { useMemo, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, SectionList, StyleSheet, Alert } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addDays, format, startOfWeek } from "date-fns";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { apiRequest } from "../lib/api";
-import type { GroceryItem } from "../lib/types";
+import type { GroceryItem, PantryItem, FromPlanResult, GroceryCategory } from "../lib/types";
+import { GROCERY_CATEGORIES } from "../lib/types";
 import { useColors, radii, spacing, type, type ThemeColors } from "../theme";
+
+const CATEGORY_ICON: Record<GroceryCategory, keyof typeof Ionicons.glyphMap> = {
+  Produce: "leaf-outline",
+  "Dairy & Eggs": "egg-outline",
+  "Meat & Seafood": "fish-outline",
+  Bakery: "cafe-outline",
+  Frozen: "snow-outline",
+  Pantry: "archive-outline",
+  Other: "ellipsis-horizontal-outline",
+};
 
 export default function GroceryScreen() {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const queryClient = useQueryClient();
+  const [view, setView] = useState<"shopping" | "pantry">("shopping");
 
+  return (
+    <View style={styles.container}>
+      <View style={styles.segmentRow}>
+        <TouchableOpacity
+          style={[styles.segment, view === "shopping" && styles.segmentActive]}
+          onPress={() => setView("shopping")}
+        >
+          <Ionicons name="cart-outline" size={15} color={view === "shopping" ? colors.white : colors.textSecondary} />
+          <Text style={[styles.segmentText, view === "shopping" && styles.segmentTextActive]}>Shopping</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.segment, view === "pantry" && styles.segmentActive]}
+          onPress={() => setView("pantry")}
+        >
+          <Ionicons name="archive-outline" size={15} color={view === "pantry" ? colors.white : colors.textSecondary} />
+          <Text style={[styles.segmentText, view === "pantry" && styles.segmentTextActive]}>Pantry</Text>
+        </TouchableOpacity>
+      </View>
+
+      {view === "shopping" ? (
+        <ShoppingView colors={colors} styles={styles} queryClient={queryClient} />
+      ) : (
+        <PantryView colors={colors} styles={styles} queryClient={queryClient} />
+      )}
+    </View>
+  );
+}
+
+type SharedProps = {
+  colors: ThemeColors;
+  styles: ReturnType<typeof makeStyles>;
+  queryClient: ReturnType<typeof useQueryClient>;
+};
+
+function ShoppingView({ colors, styles, queryClient }: SharedProps) {
   const { data: items, isLoading } = useQuery({
     queryKey: ["grocery"],
     queryFn: () => apiRequest<GroceryItem[]>("/api/grocery"),
@@ -55,18 +102,20 @@ export default function GroceryScreen() {
       const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
       const start = format(weekStart, "yyyy-MM-dd");
       const end = format(addDays(weekStart, 6), "yyyy-MM-dd");
-      return apiRequest<GroceryItem[]>(`/api/grocery/from-plan?start=${start}&end=${end}`, { method: "POST" });
+      return apiRequest<FromPlanResult>(`/api/grocery/from-plan?start=${start}&end=${end}`, { method: "POST" });
     },
-    onSuccess: (added) => {
+    onSuccess: ({ added, skippedInPantry }) => {
       queryClient.invalidateQueries({ queryKey: ["grocery"] });
-      if (added.length === 0) {
+      if (added.length === 0 && skippedInPantry === 0) {
         Alert.alert("Nothing new", "Everything from this week's plan is already on your list.");
+      } else if (added.length === 0 && skippedInPantry > 0) {
+        Alert.alert("All set", `You already have everything you need — ${skippedInPantry} item${skippedInPantry === 1 ? "" : "s"} were already in your pantry.`);
+      } else if (skippedInPantry > 0) {
+        Alert.alert("List updated", `Added ${added.length} item${added.length === 1 ? "" : "s"}. Skipped ${skippedInPantry} already in your pantry.`);
       }
     },
     onError: (error: Error) => Alert.alert("Could not generate list", error.message),
   });
-
-  const hasChecked = items?.some((i: GroceryItem) => i.checked);
 
   function handleAdd() {
     if (!name.trim()) {
@@ -76,8 +125,19 @@ export default function GroceryScreen() {
     addMutation.mutate();
   }
 
+  const sections = useMemo(() => {
+    const unchecked = (items ?? []).filter((i: GroceryItem) => !i.checked);
+    const checked = (items ?? []).filter((i: GroceryItem) => i.checked);
+    const bySections: { title: string; data: GroceryItem[] }[] = GROCERY_CATEGORIES.map((category) => ({
+      title: category as string,
+      data: unchecked.filter((i: GroceryItem) => i.category === category),
+    })).filter((s) => s.data.length > 0);
+    if (checked.length > 0) bySections.push({ title: "Checked", data: checked });
+    return bySections;
+  }, [items]);
+
   return (
-    <View style={styles.container}>
+    <>
       <TouchableOpacity
         style={styles.planButton}
         activeOpacity={0.85}
@@ -86,7 +146,7 @@ export default function GroceryScreen() {
       >
         <Ionicons name="sparkles" size={16} color={colors.white} />
         <Text style={styles.planButtonText}>
-          {fromPlanMutation.isPending ? "Adding…" : "Add ingredients from this week's plan"}
+          {fromPlanMutation.isPending ? "Working it out…" : "Smart list from this week's plan"}
         </Text>
       </TouchableOpacity>
 
@@ -115,10 +175,11 @@ export default function GroceryScreen() {
       {isLoading ? (
         <Text style={styles.loadingText}>Loading…</Text>
       ) : (
-        <FlatList
-          data={items ?? []}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={items?.length ? styles.listContent : styles.listContentEmpty}
+          contentContainerStyle={sections.length ? styles.listContent : styles.listContentEmpty}
+          stickySectionHeadersEnabled={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="cart-outline" size={36} color={colors.textMuted} />
@@ -126,6 +187,19 @@ export default function GroceryScreen() {
               <Text style={styles.emptySubtext}>Add items above, or pull them in from this week's plan</Text>
             </View>
           }
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeader}>
+              {section.title !== "Checked" ? (
+                <Ionicons name={CATEGORY_ICON[section.title as GroceryCategory]} size={13} color={colors.textMuted} />
+              ) : null}
+              <Text style={styles.sectionHeaderText}>{section.title.toUpperCase()}</Text>
+              {section.title === "Checked" ? (
+                <TouchableOpacity onPress={() => clearCheckedMutation.mutate()}>
+                  <Text style={styles.clearInlineText}>Clear</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
           renderItem={({ item }) => (
             <View style={styles.itemRow}>
               <TouchableOpacity
@@ -143,16 +217,100 @@ export default function GroceryScreen() {
               </TouchableOpacity>
             </View>
           )}
-          ListFooterComponent={
-            hasChecked ? (
-              <TouchableOpacity style={styles.clearButton} onPress={() => clearCheckedMutation.mutate()}>
-                <Text style={styles.clearButtonText}>Clear checked items</Text>
-              </TouchableOpacity>
-            ) : null
-          }
         />
       )}
-    </View>
+    </>
+  );
+}
+
+function PantryView({ colors, styles, queryClient }: SharedProps) {
+  const { data: items, isLoading } = useQuery({
+    queryKey: ["pantry"],
+    queryFn: () => apiRequest<PantryItem[]>("/api/pantry"),
+  });
+
+  const [name, setName] = useState("");
+
+  const addMutation = useMutation({
+    mutationFn: () => apiRequest<PantryItem>("/api/pantry", { method: "POST", body: JSON.stringify({ name: name.trim() }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pantry"] });
+      setName("");
+    },
+    onError: (error: Error) => Alert.alert("Could not add item", error.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest<void>(`/api/pantry/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pantry"] }),
+  });
+
+  function handleAdd() {
+    if (!name.trim()) {
+      Alert.alert("Add at least an item name to add it to your pantry");
+      return;
+    }
+    addMutation.mutate();
+  }
+
+  const sections = useMemo(() => {
+    return GROCERY_CATEGORIES.map((category) => ({
+      title: category,
+      data: (items ?? []).filter((i: PantryItem) => i.category === category),
+    })).filter((s) => s.data.length > 0);
+  }, [items]);
+
+  return (
+    <>
+      <Text style={styles.pantryHint}>What you already have at home — Grocery will skip these when building a list from your plan.</Text>
+      <View style={styles.addRow}>
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Paneer, Rice, Ginger…"
+          placeholderTextColor={colors.textMuted}
+          onSubmitEditing={handleAdd}
+          returnKeyType="done"
+        />
+        <TouchableOpacity style={styles.addButton} onPress={handleAdd} disabled={addMutation.isPending}>
+          <Ionicons name="add" size={20} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+
+      {isLoading ? (
+        <Text style={styles.loadingText}>Loading…</Text>
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={sections.length ? styles.listContent : styles.listContentEmpty}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="archive-outline" size={36} color={colors.textMuted} />
+              <Text style={styles.emptyText}>Pantry is empty</Text>
+              <Text style={styles.emptySubtext}>Add what you've already got so Grocery knows what to skip</Text>
+            </View>
+          }
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeader}>
+              <Ionicons name={CATEGORY_ICON[section.title as GroceryCategory]} size={13} color={colors.textMuted} />
+              <Text style={styles.sectionHeaderText}>{section.title.toUpperCase()}</Text>
+            </View>
+          )}
+          renderItem={({ item }) => (
+            <View style={styles.itemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.itemName}>{item.name}</Text>
+              </View>
+              <TouchableOpacity onPress={() => deleteMutation.mutate(item.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      )}
+    </>
   );
 }
 
@@ -160,6 +318,14 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
     loadingText: { fontSize: 14, color: colors.textSecondary, textAlign: "center", marginTop: spacing.xl },
+
+    segmentRow: { flexDirection: "row", backgroundColor: colors.surfaceAlt, borderRadius: radii.sm, padding: 4, marginBottom: spacing.md, gap: 4 },
+    segment: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 8, borderRadius: radii.sm - 2 },
+    segmentActive: { backgroundColor: colors.accent },
+    segmentText: { fontSize: 13, fontWeight: "700", color: colors.textSecondary },
+    segmentTextActive: { color: colors.white },
+
+    pantryHint: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.md, lineHeight: 18 },
 
     planButton: {
       flexDirection: "row",
@@ -198,6 +364,10 @@ const makeStyles = (colors: ThemeColors) =>
     emptyText: { ...type.title, color: colors.textPrimary },
     emptySubtext: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: spacing.lg },
 
+    sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing.sm, marginBottom: 6 },
+    sectionHeaderText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, color: colors.textMuted, flex: 1 },
+    clearInlineText: { fontSize: 12, fontWeight: "700", color: colors.danger },
+
     itemRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -223,7 +393,4 @@ const makeStyles = (colors: ThemeColors) =>
     itemName: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
     itemNameChecked: { textDecorationLine: "line-through", color: colors.textMuted },
     itemQuantity: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
-
-    clearButton: { alignItems: "center", paddingVertical: spacing.sm, marginTop: spacing.xs },
-    clearButtonText: { color: colors.danger, fontSize: 13, fontWeight: "600" },
   });

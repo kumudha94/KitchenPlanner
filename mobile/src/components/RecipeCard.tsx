@@ -16,9 +16,10 @@ type Props = {
   onPress: () => void;
   selected?: boolean;
   elevated?: boolean;
+  onToggleFavorite?: () => void;
 };
 
-export default function RecipeCard({ recipe, onPress, selected, elevated = true }: Props) {
+export default function RecipeCard({ recipe, onPress, selected, elevated = true, onToggleFavorite }: Props) {
   const colors = useColors();
   const shadow = useShadow();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -64,6 +65,16 @@ export default function RecipeCard({ recipe, onPress, selected, elevated = true 
           ))}
         </View>
       </View>
+
+      {onToggleFavorite ? (
+        <TouchableOpacity onPress={onToggleFavorite} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 4 }}>
+          <Ionicons
+            name={recipe.isFavorite ? "star" : "star-outline"}
+            size={20}
+            color={recipe.isFavorite ? colors.breakfast : colors.textMuted}
+          />
+        </TouchableOpacity>
+      ) : null}
 
       {selected ? (
         <Ionicons name="checkmark-circle" size={22} color={colors.accent} />

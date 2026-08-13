@@ -41,7 +41,8 @@ groceryRouter.post(
       res.status(400).json({ error: "start and end query params must be YYYY-MM-DD" });
       return;
     }
-    res.json(await groceryStorage.addFromPlan(start, end));
+    const result = await groceryStorage.addFromPlan(start, end);
+    res.json(result);
   })
 );
 

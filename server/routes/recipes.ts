@@ -18,6 +18,14 @@ recipesRouter.get(
 );
 
 recipesRouter.get(
+  "/recently-used",
+  wrap(async (req, res) => {
+    const limit = Math.min(Number(req.query.limit) || 8, 20);
+    res.json(await recipeStorage.listRecentlyUsed(limit));
+  })
+);
+
+recipesRouter.get(
   "/:id",
   wrap(async (req, res) => {
     const id = Number(req.params.id);

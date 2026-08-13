@@ -33,6 +33,8 @@ export async function ensureSchema(): Promise<void> {
   await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS prep_time_minutes integer`);
   await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]'::jsonb`);
   await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS image_url varchar(500)`);
+  await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS servings integer NOT NULL DEFAULT 4`);
+  await pool.query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_favorite boolean NOT NULL DEFAULT false`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS grocery_items (
@@ -43,16 +45,21 @@ export async function ensureSchema(): Promise<void> {
       created_at timestamp NOT NULL DEFAULT now()
     )
   `);
+  await pool.query(`ALTER TABLE grocery_items ADD COLUMN IF NOT EXISTS category varchar(40) NOT NULL DEFAULT 'Other'`);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS prep_tasks (
+    CREATE TABLE IF NOT EXISTS pantry_items (
       id serial PRIMARY KEY,
-      description varchar(200) NOT NULL,
-      for_date varchar(10) NOT NULL,
-      checked boolean NOT NULL DEFAULT false,
+      name varchar(150) NOT NULL,
+      category varchar(40) NOT NULL DEFAULT 'Other',
       created_at timestamp NOT NULL DEFAULT now()
     )
   `);
+
+  // Prep Log was removed as a standalone feature — it never connected to the
+  // rest of the app and the same "get ready to cook" need is better served by
+  // the recipe itself plus the grocery list. Dropping the now-orphaned table.
+  await pool.query(`DROP TABLE IF EXISTS prep_tasks`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (

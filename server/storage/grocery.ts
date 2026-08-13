@@ -1,6 +1,8 @@
 import { db } from "../db";
-import { groceryItems, mealPlanEntries, recipes, type GroceryItem, type InsertGroceryItem } from "@shared/schema";
+import { groceryItems, mealPlanEntries, pantryItems, recipes, type GroceryItem, type InsertGroceryItem } from "@shared/schema";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
+import { categorizeItem } from "../lib/groceryCategorize";
+import { mergeIngredientQuantities, scaleQuantity } from "../lib/quantityScale";
 
 export async function listItems(): Promise<GroceryItem[]> {
   return db.select().from(groceryItems).orderBy(asc(groceryItems.checked), asc(groceryItems.createdAt));
@@ -9,7 +11,7 @@ export async function listItems(): Promise<GroceryItem[]> {
 export async function addItem(data: InsertGroceryItem): Promise<GroceryItem> {
   const [item] = await db
     .insert(groceryItems)
-    .values({ name: data.name, quantity: data.quantity ?? null })
+    .values({ name: data.name, quantity: data.quantity ?? null, category: data.category ?? categorizeItem(data.name) })
     .returning();
   return item;
 }
@@ -29,37 +31,60 @@ export async function clearChecked(): Promise<number> {
   return result.length;
 }
 
-// Pulls every ingredient from recipes planned in [startDate, endDate] and adds
-// any not already present as an unchecked item (matched by name+quantity, so
-// re-running for the same week is safe and won't pile up duplicates).
-export async function addFromPlan(startDate: string, endDate: string): Promise<GroceryItem[]> {
+export type FromPlanResult = { added: GroceryItem[]; skippedInPantry: number };
+
+// Pulls every ingredient from recipes planned in [startDate, endDate], scaled
+// by how many times each recipe is planned in that range (so planning the
+// same recipe twice asks for twice the ingredients), merges duplicates
+// across recipes, drops anything already sitting in the Pantry, and adds
+// what's left as unchecked grocery items (skipping anything already on the
+// unchecked list by name, so re-running for the same week is safe).
+export async function addFromPlan(startDate: string, endDate: string): Promise<FromPlanResult> {
   const entries = await db
     .select()
     .from(mealPlanEntries)
     .where(and(gte(mealPlanEntries.date, startDate), lte(mealPlanEntries.date, endDate)));
 
-  const recipeIds = Array.from(new Set(entries.map((e) => e.recipeId).filter((id): id is number => id !== null)));
-  if (recipeIds.length === 0) return [];
+  const occurrences = new Map<number, number>();
+  for (const entry of entries) {
+    if (entry.recipeId === null) continue;
+    occurrences.set(entry.recipeId, (occurrences.get(entry.recipeId) ?? 0) + 1);
+  }
+  if (occurrences.size === 0) return { added: [], skippedInPantry: 0 };
 
   const plannedRecipes = await db.select().from(recipes);
   const recipeById = new Map(plannedRecipes.map((r) => [r.id, r]));
 
-  const existing = await db.select().from(groceryItems).where(eq(groceryItems.checked, false));
-  const existingKeys = new Set(existing.map((i) => `${i.name.toLowerCase()}|${i.quantity ?? ""}`));
-
-  const toInsert: InsertGroceryItem[] = [];
-  const seen = new Set<string>();
-  for (const recipeId of recipeIds) {
+  const scaledIngredients: { name: string; quantity: string }[] = [];
+  for (const [recipeId, count] of Array.from(occurrences)) {
     const recipe = recipeById.get(recipeId);
     if (!recipe) continue;
     for (const ing of recipe.ingredients as { name: string; quantity: string }[]) {
-      const key = `${ing.name.toLowerCase()}|${ing.quantity}`;
-      if (existingKeys.has(key) || seen.has(key)) continue;
-      seen.add(key);
-      toInsert.push({ name: ing.name, quantity: ing.quantity });
+      scaledIngredients.push({ name: ing.name, quantity: scaleQuantity(ing.quantity, count) });
     }
   }
 
-  if (toInsert.length === 0) return [];
-  return db.insert(groceryItems).values(toInsert).returning();
+  const merged = mergeIngredientQuantities(scaledIngredients);
+
+  const pantry = await db.select().from(pantryItems);
+  const pantryNames = new Set(pantry.map((p) => p.name.trim().toLowerCase()));
+
+  const existing = await db.select().from(groceryItems).where(eq(groceryItems.checked, false));
+  const existingNames = new Set(existing.map((i) => i.name.trim().toLowerCase()));
+
+  let skippedInPantry = 0;
+  const toInsert: InsertGroceryItem[] = [];
+  for (const ing of merged) {
+    const key = ing.name.trim().toLowerCase();
+    if (pantryNames.has(key)) {
+      skippedInPantry++;
+      continue;
+    }
+    if (existingNames.has(key)) continue;
+    toInsert.push({ name: ing.name, quantity: ing.quantity, category: categorizeItem(ing.name) });
+  }
+
+  if (toInsert.length === 0) return { added: [], skippedInPantry };
+  const added = await db.insert(groceryItems).values(toInsert).returning();
+  return { added, skippedInPantry };
 }

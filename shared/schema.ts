@@ -15,8 +15,10 @@ export const recipes = pgTable("recipes", {
   ingredients: jsonb("ingredients").notNull().default(sql`'[]'::jsonb`),
   notes: text("notes"),
   prepTimeMinutes: integer("prep_time_minutes"),
+  servings: integer("servings").notNull().default(4),
   tags: jsonb("tags").notNull().default(sql`'[]'::jsonb`),
   imageUrl: varchar("image_url", { length: 500 }),
+  isFavorite: boolean("is_favorite").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -36,8 +38,10 @@ export const insertRecipeSchema = createInsertSchema(recipes)
       .default([]),
     notes: z.string().nullable().optional(),
     prepTimeMinutes: z.number().int().positive().nullable().optional(),
+    servings: z.number().int().positive().max(50).default(4),
     tags: z.array(z.string().min(1)).default([]),
     imageUrl: z.string().url().nullable().optional(),
+    isFavorite: z.boolean().default(false),
   });
 
 export type InsertRecipe = z.infer<typeof insertRecipeSchema>;
@@ -65,10 +69,22 @@ export const mealPlanEntries = pgTable(
 
 export type MealPlanEntry = typeof mealPlanEntries.$inferSelect;
 
+export const GROCERY_CATEGORIES = [
+  "Produce",
+  "Dairy & Eggs",
+  "Meat & Seafood",
+  "Bakery",
+  "Frozen",
+  "Pantry",
+  "Other",
+] as const;
+export type GroceryCategory = (typeof GROCERY_CATEGORIES)[number];
+
 export const groceryItems = pgTable("grocery_items", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 150 }).notNull(),
   quantity: varchar("quantity", { length: 50 }),
+  category: varchar("category", { length: 40 }).notNull().default("Other"),
   checked: boolean("checked").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -76,26 +92,26 @@ export const groceryItems = pgTable("grocery_items", {
 export const insertGroceryItemSchema = z.object({
   name: z.string().min(1, "Item name is required"),
   quantity: z.string().nullable().optional(),
+  category: z.enum(GROCERY_CATEGORIES).optional(),
 });
 
 export type InsertGroceryItem = z.infer<typeof insertGroceryItemSchema>;
 export type GroceryItem = typeof groceryItems.$inferSelect;
 
-export const prepTasks = pgTable("prep_tasks", {
+export const pantryItems = pgTable("pantry_items", {
   id: serial("id").primaryKey(),
-  description: varchar("description", { length: 200 }).notNull(),
-  forDate: varchar("for_date", { length: 10 }).notNull(),
-  checked: boolean("checked").notNull().default(false),
+  name: varchar("name", { length: 150 }).notNull(),
+  category: varchar("category", { length: 40 }).notNull().default("Other"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertPrepTaskSchema = z.object({
-  description: z.string().min(1, "Task description is required"),
-  forDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "forDate must be YYYY-MM-DD"),
+export const insertPantryItemSchema = z.object({
+  name: z.string().min(1, "Item name is required"),
+  category: z.enum(GROCERY_CATEGORIES).optional(),
 });
 
-export type InsertPrepTask = z.infer<typeof insertPrepTaskSchema>;
-export type PrepTask = typeof prepTasks.$inferSelect;
+export type InsertPantryItem = z.infer<typeof insertPantryItemSchema>;
+export type PantryItem = typeof pantryItems.$inferSelect;
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
