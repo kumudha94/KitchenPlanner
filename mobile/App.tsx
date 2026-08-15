@@ -18,6 +18,7 @@ import AddEditRecipeScreen from "./src/screens/AddEditRecipeScreen";
 import PlannerScreen from "./src/screens/PlannerScreen";
 import SlotEditorScreen from "./src/screens/SlotEditorScreen";
 import GroceryScreen from "./src/screens/GroceryScreen";
+import RemindersScreen from "./src/screens/RemindersScreen";
 import AccountScreen from "./src/screens/AccountScreen";
 import EmailEntryScreen from "./src/screens/auth/EmailEntryScreen";
 import OtpScreen from "./src/screens/auth/OtpScreen";
@@ -65,6 +66,7 @@ export type TabParamList = {
   Planner: undefined;
   Recipes: undefined;
   Grocery: undefined;
+  Reminders: undefined;
 };
 
 export type RecipesStackParamList = {
@@ -141,6 +143,7 @@ function TabNavigator() {
           if (route.name === "Planner") iconName = focused ? "today" : "today-outline";
           else if (route.name === "Recipes") iconName = focused ? "book" : "book-outline";
           else if (route.name === "Grocery") iconName = focused ? "cart" : "cart-outline";
+          else if (route.name === "Reminders") iconName = focused ? "alarm" : "alarm-outline";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: colors.accent,
@@ -171,6 +174,7 @@ function TabNavigator() {
       <Tab.Screen name="Planner" component={PlannerStackNavigator} options={{ title: "Planner", headerShown: false }} />
       <Tab.Screen name="Recipes" component={RecipesStackNavigator} options={{ title: "Recipes", headerShown: false }} />
       <Tab.Screen name="Grocery" component={GroceryScreen} options={{ title: "Grocery" }} />
+      <Tab.Screen name="Reminders" component={RemindersScreen} options={{ title: "Reminders" }} />
     </Tab.Navigator>
   );
 }
