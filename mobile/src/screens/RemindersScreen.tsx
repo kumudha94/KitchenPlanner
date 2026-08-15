@@ -2,10 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { View, Text, Switch, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { apiRequest } from "../lib/api";
 import { requestNotificationPermission, scheduleCustomReminder, cancelCustomReminder } from "../lib/notifications";
+import { useAuth } from "../contexts/AuthContext";
 import { useColors, radii, spacing, type, type ThemeColors } from "../theme";
 import type { Reminder, InsertReminder } from "../lib/types";
+import type { TabParamList } from "../../App";
+
+type Props = BottomTabScreenProps<TabParamList, "Reminders">;
 
 function formatTime(hour: number, minute: number): string {
   const period = hour < 12 ? "AM" : "PM";
@@ -15,15 +20,17 @@ function formatTime(hour: number, minute: number): string {
 
 const MINUTE_STEP = 5;
 
-export default function RemindersScreen() {
+export default function RemindersScreen({ navigation }: Props) {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
   const [isAdding, setIsAdding] = useState(false);
 
   const { data: reminders, isLoading } = useQuery({
     queryKey: ["reminders"],
     queryFn: () => apiRequest<Reminder[]>("/api/reminders"),
+    enabled: isAuthenticated,
   });
 
   // Reminders don't survive a reinstall any more than the meal-plan one
@@ -71,6 +78,19 @@ export default function RemindersScreen() {
       return;
     }
     createMutation.mutate(data);
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.lockedState}>
+        <Ionicons name="lock-closed-outline" size={36} color={colors.textMuted} />
+        <Text style={styles.emptyText}>Log in to set up reminders</Text>
+        <Text style={styles.emptySubtext}>Reminders are tied to your account, unlike the rest of the app.</Text>
+        <TouchableOpacity style={styles.loginButton} onPress={() => navigation.getParent()?.navigate("EmailEntry" as never)}>
+          <Text style={styles.loginButtonText}>Log in</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -231,6 +251,23 @@ const makeStyles = (colors: ThemeColors) =>
     emptyState: { flex: 1, justifyContent: "center", alignItems: "center", gap: spacing.sm, paddingTop: spacing.xl },
     emptyText: { ...type.title, color: colors.textPrimary },
     emptySubtext: { fontSize: 13, color: colors.textSecondary, textAlign: "center" },
+
+    lockedState: {
+      flex: 1,
+      backgroundColor: colors.background,
+      justifyContent: "center",
+      alignItems: "center",
+      gap: spacing.sm,
+      padding: spacing.xl,
+    },
+    loginButton: {
+      marginTop: spacing.md,
+      backgroundColor: colors.accent,
+      borderRadius: radii.sm,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+    },
+    loginButtonText: { color: colors.white, fontWeight: "700", fontSize: 14 },
 
     reminderRow: {
       flexDirection: "row",

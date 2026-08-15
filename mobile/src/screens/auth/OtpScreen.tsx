@@ -5,10 +5,10 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useColors, radii, spacing, type, type ThemeColors } from "../../theme";
-import type { AuthStackParamList } from "../../../App";
+import type { RootStackParamList } from "../../../App";
 import type { VerifyOtpResponse } from "../../lib/types";
 
-type Props = NativeStackScreenProps<AuthStackParamList, "Otp">;
+type Props = NativeStackScreenProps<RootStackParamList, "Otp">;
 
 export default function OtpScreen({ route, navigation }: Props) {
   const { email } = route.params;
@@ -24,6 +24,7 @@ export default function OtpScreen({ route, navigation }: Props) {
         navigation.navigate("Username", { email, signupToken: result.signupToken });
       } else {
         login(result.token, result.user);
+        navigation.navigate("Account");
       }
     },
     onError: (error: Error) => Alert.alert("Could not verify code", error.message),

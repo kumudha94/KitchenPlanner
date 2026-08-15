@@ -5,12 +5,12 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useColors, radii, spacing, type, type ThemeColors } from "../../theme";
-import type { AuthStackParamList } from "../../../App";
+import type { RootStackParamList } from "../../../App";
 import type { User } from "../../lib/types";
 
-type Props = NativeStackScreenProps<AuthStackParamList, "Username">;
+type Props = NativeStackScreenProps<RootStackParamList, "Username">;
 
-export default function UsernameScreen({ route }: Props) {
+export default function UsernameScreen({ route, navigation }: Props) {
   const { email, signupToken } = route.params;
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -23,7 +23,10 @@ export default function UsernameScreen({ route }: Props) {
         method: "POST",
         body: JSON.stringify({ email, username: username.trim(), signupToken }),
       }),
-    onSuccess: (result) => login(result.token, result.user),
+    onSuccess: (result) => {
+      login(result.token, result.user);
+      navigation.navigate("Account");
+    },
     onError: (error: Error) => Alert.alert("Could not finish sign up", error.message),
   });
 

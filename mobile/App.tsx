@@ -35,33 +35,6 @@ const queryClient = new QueryClient({
   },
 });
 
-export type AuthStackParamList = {
-  EmailEntry: undefined;
-  Otp: { email: string };
-  Username: { email: string; signupToken: string };
-};
-
-const AuthStack = createNativeStackNavigator<AuthStackParamList>();
-
-function AuthNavigator() {
-  const colors = useColors();
-  return (
-    <AuthStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.background },
-        headerShadowVisible: false,
-        headerTintColor: colors.textPrimary,
-        headerTitleStyle: { fontWeight: "700", fontSize: 17 },
-        headerBackTitle: "",
-      }}
-    >
-      <AuthStack.Screen name="EmailEntry" component={EmailEntryScreen} options={{ headerShown: false }} />
-      <AuthStack.Screen name="Otp" component={OtpScreen} options={{ title: "" }} />
-      <AuthStack.Screen name="Username" component={UsernameScreen} options={{ title: "" }} />
-    </AuthStack.Navigator>
-  );
-}
-
 export type TabParamList = {
   Planner: undefined;
   Recipes: undefined;
@@ -79,6 +52,7 @@ const RecipesStack = createNativeStackNavigator<RecipesStackParamList>();
 
 function RecipesStackNavigator() {
   const colors = useColors();
+  const { isAuthenticated } = useAuth();
   return (
     <RecipesStack.Navigator
       screenOptions={({ navigation }) => ({
@@ -88,7 +62,7 @@ function RecipesStackNavigator() {
         headerTitleStyle: { fontWeight: "700", fontSize: 17 },
         headerRight: () => (
           <TouchableOpacity
-            onPress={() => navigation.getParent()?.getParent()?.navigate("Account" as never)}
+            onPress={() => navigation.getParent()?.getParent()?.navigate((isAuthenticated ? "Account" : "EmailEntry") as never)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="person-circle-outline" size={24} color={colors.textSecondary} />
@@ -135,6 +109,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 function TabNavigator() {
   const colors = useColors();
+  const { isAuthenticated } = useAuth();
   return (
     <Tab.Navigator
       screenOptions={({ route, navigation }) => ({
@@ -163,7 +138,7 @@ function TabNavigator() {
         headerTitleStyle: { fontWeight: "700", fontSize: 17 },
         headerRight: () => (
           <TouchableOpacity
-            onPress={() => navigation.getParent()?.navigate("Account" as never)}
+            onPress={() => navigation.getParent()?.navigate((isAuthenticated ? "Account" : "EmailEntry") as never)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="person-circle-outline" size={24} color={colors.textSecondary} />
@@ -182,6 +157,9 @@ function TabNavigator() {
 export type RootStackParamList = {
   Tabs: undefined;
   Account: undefined;
+  EmailEntry: undefined;
+  Otp: { email: string };
+  Username: { email: string; signupToken: string };
 };
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -200,6 +178,9 @@ function RootNavigator() {
     >
       <RootStack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
       <RootStack.Screen name="Account" component={AccountScreen} options={{ title: "Account" }} />
+      <RootStack.Screen name="EmailEntry" component={EmailEntryScreen} options={{ headerShown: false }} />
+      <RootStack.Screen name="Otp" component={OtpScreen} options={{ title: "" }} />
+      <RootStack.Screen name="Username" component={UsernameScreen} options={{ title: "" }} />
     </RootStack.Navigator>
   );
 }
@@ -207,7 +188,7 @@ function RootNavigator() {
 function AppContent() {
   const colors = useColors();
   const scheme = useColorScheme();
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading } = useAuth();
   // @expo/vector-icons registers Ionicons under the lowercase family name
   // "ionicons" (see createIconSet(glyphMap, "ionicons", font) in its source),
   // and Font.isLoaded() checks that exact lowercase key. Loading it
@@ -244,7 +225,7 @@ function AppContent() {
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <SafeAreaProvider>
         <NavigationContainer theme={navigationTheme}>
-          {isAuthenticated ? <RootNavigator /> : <AuthNavigator />}
+          <RootNavigator />
         </NavigationContainer>
         <StatusBar style="auto" />
       </SafeAreaProvider>

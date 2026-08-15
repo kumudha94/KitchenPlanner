@@ -6,10 +6,10 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useColors, radii, spacing, type, type ThemeColors } from "../../theme";
-import type { AuthStackParamList } from "../../../App";
+import type { RootStackParamList } from "../../../App";
 import type { User } from "../../lib/types";
 
-type Props = NativeStackScreenProps<AuthStackParamList, "EmailEntry">;
+type Props = NativeStackScreenProps<RootStackParamList, "EmailEntry">;
 
 export default function EmailEntryScreen({ navigation }: Props) {
   const colors = useColors();
@@ -25,7 +25,10 @@ export default function EmailEntryScreen({ navigation }: Props) {
 
   const devLoginMutation = useMutation({
     mutationFn: () => apiRequest<{ token: string; user: User }>("/api/auth/dev-login", { method: "POST" }),
-    onSuccess: (result) => login(result.token, result.user),
+    onSuccess: (result) => {
+      login(result.token, result.user);
+      navigation.navigate("Account");
+    },
     onError: (error: Error) =>
       Alert.alert("Can't skip login", `${error.message}\n\nThis only works against a local backend running "npm run dev".`),
   });

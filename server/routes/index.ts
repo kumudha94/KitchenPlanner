@@ -16,15 +16,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.use("/api/auth", authRouter);
 
-  // Everything below requires a logged-in session. This app still has a
-  // single shared dataset (no per-user data isolation) — auth is a gate on
-  // who can use the app, not a multi-tenant boundary.
-  app.use("/api/recipes", requireAuth, recipesRouter);
-  app.use("/api/meal-plan", requireAuth, mealPlannerRouter);
-  app.use("/api/grocery", requireAuth, groceryRouter);
-  app.use("/api/pantry", requireAuth, pantryRouter);
+  // Core planning data is intentionally open — no login wall on the app's
+  // main screens. This is a single shared dataset with no per-user
+  // isolation, so "logged out" and "public" are the same exposure here by
+  // design: recipes/meal-plan/grocery/pantry are low-sensitivity personal
+  // data, and the product tradeoff is a frictionless start over hiding them.
+  // Reminders stay behind requireAuth since they're framed as an
+  // account-level feature (tied to notification setup), not a core screen.
+  app.use("/api/recipes", recipesRouter);
+  app.use("/api/meal-plan", mealPlannerRouter);
+  app.use("/api/grocery", groceryRouter);
+  app.use("/api/pantry", pantryRouter);
+  app.use("/api/upload", uploadRouter);
   app.use("/api/reminders", requireAuth, remindersRouter);
-  app.use("/api/upload", requireAuth, uploadRouter);
 
   return createServer(app);
 }

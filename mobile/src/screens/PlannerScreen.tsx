@@ -9,6 +9,7 @@ import { apiRequest } from "../lib/api";
 import type { MealPlanEntry, MealSlot, MealType, Recipe } from "../lib/types";
 import type { PlannerStackParamList } from "../../App";
 import { useColors, useShadow, radii, spacing, type, type ThemeColors } from "../theme";
+import { useAuth } from "../contexts/AuthContext";
 
 type Props = NativeStackScreenProps<PlannerStackParamList, "PlannerWeek">;
 
@@ -20,6 +21,7 @@ export default function PlannerScreen({ navigation }: Props) {
   const shadow = useShadow();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { isAuthenticated } = useAuth();
 
   const SLOT_META: Record<MealType, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> = {
     breakfast: { icon: "sunny", label: "Breakfast", color: colors.breakfast },
@@ -93,7 +95,7 @@ export default function PlannerScreen({ navigation }: Props) {
           </TouchableOpacity>
           <TouchableOpacity
             hitSlop={TAP_SLOP}
-            onPress={() => navigation.getParent()?.getParent()?.navigate("Account" as never)}
+            onPress={() => navigation.getParent()?.getParent()?.navigate((isAuthenticated ? "Account" : "EmailEntry") as never)}
           >
             <Ionicons name="person-circle-outline" size={26} color={colors.textSecondary} />
           </TouchableOpacity>
