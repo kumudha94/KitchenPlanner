@@ -1,8 +1,8 @@
 import { API_BASE_URL } from "./api";
-import { getToken } from "./authStorage";
+import { getAccessToken } from "./authStorage";
 
 export async function uploadImage(uri: string, fileName: string, mimeType: string): Promise<string> {
-  const token = await getToken();
+  const token = await getAccessToken();
   const formData = new FormData();
   // React Native's fetch/FormData accepts this file-descriptor shape for a
   // local URI; it's not a real Blob/File so the DOM lib types don't cover

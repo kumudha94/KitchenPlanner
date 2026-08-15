@@ -1,4 +1,5 @@
 import * as Notifications from "expo-notifications";
+import { localPref } from "./authStorage";
 
 // Controls how a notification behaves if it arrives while the app is open.
 Notifications.setNotificationHandler({
@@ -45,6 +46,20 @@ export async function scheduleDailyReminder(): Promise<void> {
 
 export async function cancelDailyReminder(): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(REMINDER_IDENTIFIER).catch(() => {});
+}
+
+// The "Show notifications" toggle used to be a server-side field on Kitchen's own user
+// row; now that login is just an identity gate (no local account data), it's a plain
+// on-device preference instead — which is arguably more correct anyway, since notification
+// scheduling is inherently per-device.
+const DAILY_REMINDER_PREF_KEY = "kitchenplanner_daily_reminder_enabled";
+
+export async function isDailyReminderEnabled(): Promise<boolean> {
+  return (await localPref.get(DAILY_REMINDER_PREF_KEY)) === "true";
+}
+
+export async function setDailyReminderEnabled(enabled: boolean): Promise<void> {
+  await localPref.set(DAILY_REMINDER_PREF_KEY, enabled ? "true" : "false");
 }
 
 // User-defined reminders (e.g. "6 AM take pill") — each gets its own daily

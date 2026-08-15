@@ -22,7 +22,6 @@ import RemindersScreen from "./src/screens/RemindersScreen";
 import AccountScreen from "./src/screens/AccountScreen";
 import EmailEntryScreen from "./src/screens/auth/EmailEntryScreen";
 import OtpScreen from "./src/screens/auth/OtpScreen";
-import UsernameScreen from "./src/screens/auth/UsernameScreen";
 import type { MealSlot } from "./src/lib/types";
 import { useColors } from "./src/theme";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
@@ -52,7 +51,6 @@ const RecipesStack = createNativeStackNavigator<RecipesStackParamList>();
 
 function RecipesStackNavigator() {
   const colors = useColors();
-  const { isAuthenticated } = useAuth();
   return (
     <RecipesStack.Navigator
       screenOptions={({ navigation }) => ({
@@ -62,7 +60,7 @@ function RecipesStackNavigator() {
         headerTitleStyle: { fontWeight: "700", fontSize: 17 },
         headerRight: () => (
           <TouchableOpacity
-            onPress={() => navigation.getParent()?.getParent()?.navigate((isAuthenticated ? "Account" : "EmailEntry") as never)}
+            onPress={() => navigation.getParent()?.getParent()?.navigate("Account" as never)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="person-circle-outline" size={24} color={colors.textSecondary} />
@@ -109,7 +107,6 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 function TabNavigator() {
   const colors = useColors();
-  const { isAuthenticated } = useAuth();
   return (
     <Tab.Navigator
       screenOptions={({ route, navigation }) => ({
@@ -138,7 +135,7 @@ function TabNavigator() {
         headerTitleStyle: { fontWeight: "700", fontSize: 17 },
         headerRight: () => (
           <TouchableOpacity
-            onPress={() => navigation.getParent()?.navigate((isAuthenticated ? "Account" : "EmailEntry") as never)}
+            onPress={() => navigation.getParent()?.navigate("Account" as never)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="person-circle-outline" size={24} color={colors.textSecondary} />
@@ -159,13 +156,16 @@ export type RootStackParamList = {
   Account: undefined;
   EmailEntry: undefined;
   Otp: { email: string };
-  Username: { email: string; signupToken: string };
 };
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
+// Login is mandatory (same shared account as FinanceTracker and Milo) — which screens
+// exist in the stack switches on auth state, so an unauthenticated user can only ever
+// reach EmailEntry/Otp, never the app's actual data screens.
 function RootNavigator() {
   const colors = useColors();
+  const { isAuthenticated } = useAuth();
   return (
     <RootStack.Navigator
       screenOptions={{
@@ -176,11 +176,17 @@ function RootNavigator() {
         headerBackTitle: "",
       }}
     >
-      <RootStack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
-      <RootStack.Screen name="Account" component={AccountScreen} options={{ title: "Account" }} />
-      <RootStack.Screen name="EmailEntry" component={EmailEntryScreen} options={{ headerShown: false }} />
-      <RootStack.Screen name="Otp" component={OtpScreen} options={{ title: "" }} />
-      <RootStack.Screen name="Username" component={UsernameScreen} options={{ title: "" }} />
+      {isAuthenticated ? (
+        <>
+          <RootStack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
+          <RootStack.Screen name="Account" component={AccountScreen} options={{ title: "Account" }} />
+        </>
+      ) : (
+        <>
+          <RootStack.Screen name="EmailEntry" component={EmailEntryScreen} options={{ headerShown: false }} />
+          <RootStack.Screen name="Otp" component={OtpScreen} options={{ title: "" }} />
+        </>
+      )}
     </RootStack.Navigator>
   );
 }

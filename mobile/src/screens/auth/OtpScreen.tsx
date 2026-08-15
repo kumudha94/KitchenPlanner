@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from "react-native";
+import { Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { useMutation } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { apiRequest } from "../../lib/api";
+import { requestOtp, verifyOtp } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useColors, radii, spacing, type, type ThemeColors } from "../../theme";
 import type { RootStackParamList } from "../../../App";
-import type { VerifyOtpResponse } from "../../lib/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Otp">;
 
@@ -18,20 +17,16 @@ export default function OtpScreen({ route, navigation }: Props) {
   const [code, setCode] = useState("");
 
   const verifyMutation = useMutation({
-    mutationFn: () => apiRequest<VerifyOtpResponse>("/api/auth/verify-otp", { method: "POST", body: JSON.stringify({ email, code: code.trim() }) }),
-    onSuccess: (result) => {
-      if (result.isNewUser) {
-        navigation.navigate("Username", { email, signupToken: result.signupToken });
-      } else {
-        login(result.token, result.user);
-        navigation.navigate("Account");
-      }
+    mutationFn: () => verifyOtp(email, code.trim()),
+    onSuccess: async (result) => {
+      await login(result.accessToken, result.refreshToken, result.user);
+      navigation.navigate("Tabs");
     },
     onError: (error: Error) => Alert.alert("Could not verify code", error.message),
   });
 
   const resendMutation = useMutation({
-    mutationFn: () => apiRequest<{ sent: boolean }>("/api/auth/request-otp", { method: "POST", body: JSON.stringify({ email }) }),
+    mutationFn: () => requestOtp(email),
     onSuccess: () => Alert.alert("Code sent", `A new code was sent to ${email}`),
     onError: (error: Error) => Alert.alert("Could not resend code", error.message),
   });
