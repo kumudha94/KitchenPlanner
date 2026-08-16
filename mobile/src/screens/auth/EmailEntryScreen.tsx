@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingVi
 import { useMutation } from "@tanstack/react-query";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { requestOtp } from "../../lib/api";
+import { apiRequest } from "../../lib/api";
 import { useColors, radii, spacing, type, type ThemeColors } from "../../theme";
 import type { RootStackParamList } from "../../../App";
 
@@ -13,9 +13,14 @@ export default function EmailEntryScreen({ navigation }: Props) {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
 
   const sendOtpMutation = useMutation({
-    mutationFn: () => requestOtp(email.trim()),
+    mutationFn: () =>
+      apiRequest<{ sent: boolean }>("/api/auth/request-otp", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim(), username: username.trim() }),
+      }),
     onSuccess: () => navigation.navigate("Otp", { email: email.trim() }),
     onError: (error: Error) => Alert.alert("Could not send code", error.message),
   });
@@ -23,6 +28,10 @@ export default function EmailEntryScreen({ navigation }: Props) {
   function handleSubmit() {
     if (!email.trim()) {
       Alert.alert("Enter your email address to continue");
+      return;
+    }
+    if (!username.trim()) {
+      Alert.alert("Enter a name Milo can call you");
       return;
     }
     sendOtpMutation.mutate();
@@ -35,11 +44,19 @@ export default function EmailEntryScreen({ navigation }: Props) {
           <Ionicons name="restaurant" size={32} color={colors.accent} />
         </View>
         <Text style={styles.title}>KitchenPlanner</Text>
-        <Text style={styles.subtitle}>
-          Sign in with your FinanceTracker email — one account works across FinanceTracker,
-          KitchenPlanner, and Milo.
-        </Text>
+        <Text style={styles.subtitle}>Enter your email — we'll send you a code to sign in.</Text>
       </View>
+
+      <TextInput
+        style={styles.input}
+        value={username}
+        onChangeText={setUsername}
+        placeholder="Your name"
+        placeholderTextColor={colors.textMuted}
+        autoCapitalize="words"
+        onSubmitEditing={handleSubmit}
+        returnKeyType="next"
+      />
 
       <TextInput
         style={styles.input}

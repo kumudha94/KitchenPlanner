@@ -1,30 +1,42 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { View, Text, Switch, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  requestNotificationPermission,
-  scheduleDailyReminder,
-  cancelDailyReminder,
-  isDailyReminderEnabled,
-  setDailyReminderEnabled,
-} from "../lib/notifications";
+import { apiRequest } from "../lib/api";
+import { requestNotificationPermission, scheduleDailyReminder, cancelDailyReminder } from "../lib/notifications";
 import { useAuth } from "../contexts/AuthContext";
-import { useColors, spacing, type, type ThemeColors } from "../theme";
+import { useColors, radii, spacing, type, type ThemeColors } from "../theme";
+import type { User } from "../lib/types";
 
 export default function AccountScreen() {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { user, logout } = useAuth();
-  const [remindersEnabled, setRemindersEnabled] = useState(false);
+  const { user, logout, refreshUser } = useAuth();
+  const queryClient = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: (data: Partial<Pick<User, "notificationsEnabled" | "newsletterOptIn">>) =>
+      apiRequest<User>("/api/auth/me", { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: () => refreshUser(),
+    onError: (error: Error) => Alert.alert("Could not update", error.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest<void>("/api/auth/me", { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.clear();
+      logout();
+    },
+    onError: (error: Error) => Alert.alert("Could not delete account", error.message),
+  });
 
   // If the preference is already on (e.g. after a reinstall), make sure the
   // OS-level schedule actually exists — it doesn't survive a fresh install.
   useEffect(() => {
-    isDailyReminderEnabled().then((enabled) => {
-      setRemindersEnabled(enabled);
-      if (enabled) scheduleDailyReminder();
-    });
-  }, []);
+    if (user?.notificationsEnabled) {
+      scheduleDailyReminder();
+    }
+  }, [user?.notificationsEnabled]);
 
   async function handleToggleNotifications(value: boolean) {
     if (value) {
@@ -37,8 +49,18 @@ export default function AccountScreen() {
     } else {
       await cancelDailyReminder();
     }
-    await setDailyReminderEnabled(value);
-    setRemindersEnabled(value);
+    updateMutation.mutate({ notificationsEnabled: value });
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      "Delete account?",
+      "This removes your login access. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => deleteMutation.mutate() },
+      ]
+    );
   }
 
   if (!user) return null;
@@ -46,17 +68,13 @@ export default function AccountScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md }}>
       <View style={styles.section}>
-        <Text style={styles.label}>Signed in as</Text>
-        <Text style={styles.value}>{user.name}</Text>
-        <Text style={styles.helperText}>{user.email}</Text>
+        <Text style={styles.label}>Email address</Text>
+        <Text style={styles.value}>{user.email}</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.helperText}>
-          This is your shared FinanceTracker account — the same login works across
-          FinanceTracker, KitchenPlanner, and Milo. Manage the account itself from
-          FinanceTracker.
-        </Text>
+        <Text style={styles.label}>Username</Text>
+        <Text style={styles.value}>{user.username}</Text>
       </View>
 
       <View style={styles.row}>
@@ -65,8 +83,20 @@ export default function AccountScreen() {
           <Text style={styles.helperText}>Daily reminder at 6 PM to check your plan.</Text>
         </View>
         <Switch
-          value={remindersEnabled}
+          value={user.notificationsEnabled}
           onValueChange={handleToggleNotifications}
+          trackColor={{ true: colors.accent, false: colors.border }}
+        />
+      </View>
+
+      <View style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.label}>Email newsletter</Text>
+          <Text style={styles.helperText}>Occasional news about the app.</Text>
+        </View>
+        <Switch
+          value={user.newsletterOptIn}
+          onValueChange={(v) => updateMutation.mutate({ newsletterOptIn: v })}
           trackColor={{ true: colors.accent, false: colors.border }}
         />
       </View>
@@ -74,6 +104,10 @@ export default function AccountScreen() {
       <TouchableOpacity style={styles.logoutRow} onPress={() => logout()}>
         <Ionicons name="log-out-outline" size={18} color={colors.textPrimary} />
         <Text style={styles.logoutText}>Log out</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.deleteRow} onPress={handleDeleteAccount} disabled={deleteMutation.isPending}>
+        <Text style={styles.deleteText}>{deleteMutation.isPending ? "Deleting…" : "Delete account"}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -102,4 +136,6 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: spacing.md,
     },
     logoutText: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
+    deleteRow: { alignItems: "center", paddingVertical: spacing.lg },
+    deleteText: { fontSize: 13, color: colors.danger, textDecorationLine: "underline" },
   });

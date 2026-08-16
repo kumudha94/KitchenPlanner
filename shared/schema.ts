@@ -155,15 +155,13 @@ export const otpCodes = pgTable("otp_codes", {
 
 const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address");
 
-export const requestOtpSchema = z.object({ email: emailSchema });
+export const requestOtpSchema = z.object({
+  email: emailSchema,
+  username: z.string().trim().min(1, "Username is required").max(60),
+});
 export const verifyOtpSchema = z.object({
   email: emailSchema,
   code: z.string().length(6, "Enter the 6-digit code"),
-});
-export const completeSignupSchema = z.object({
-  email: emailSchema,
-  username: z.string().trim().min(1, "Username is required").max(60),
-  signupToken: z.string().min(1),
 });
 export const updateAccountSchema = z.object({
   username: z.string().trim().min(1).max(60).optional(),

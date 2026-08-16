@@ -86,11 +86,11 @@ export type InsertReminder = {
   enabled?: boolean;
 };
 
-// Identity comes from FinanceTracker (shared login) — KitchenPlanner no longer keeps its
-// own user record, so this is just whatever FinanceTracker's verify-otp/refresh-token
-// endpoints return.
 export type User = {
   id: number;
   email: string;
-  name: string;
+  username: string;
+  notificationsEnabled: boolean;
+  newsletterOptIn: boolean;
+  createdAt: string;
 };

@@ -2,14 +2,15 @@ import { useMemo, useState } from "react";
 import { Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { useMutation } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { requestOtp, verifyOtp } from "../../lib/api";
+import { apiRequest } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useColors, radii, spacing, type, type ThemeColors } from "../../theme";
 import type { RootStackParamList } from "../../../App";
+import type { User } from "../../lib/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Otp">;
 
-export default function OtpScreen({ route, navigation }: Props) {
+export default function OtpScreen({ route }: Props) {
   const { email } = route.params;
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -17,16 +18,23 @@ export default function OtpScreen({ route, navigation }: Props) {
   const [code, setCode] = useState("");
 
   const verifyMutation = useMutation({
-    mutationFn: () => verifyOtp(email, code.trim()),
-    onSuccess: async (result) => {
-      await login(result.accessToken, result.refreshToken, result.user);
-      navigation.navigate("Tabs");
-    },
+    mutationFn: () =>
+      apiRequest<{ token: string; user: User }>("/api/auth/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ email, code: code.trim() }),
+      }),
+    onSuccess: (result) => login(result.token, result.user),
     onError: (error: Error) => Alert.alert("Could not verify code", error.message),
   });
 
   const resendMutation = useMutation({
-    mutationFn: () => requestOtp(email),
+    mutationFn: () =>
+      apiRequest<{ sent: boolean }>("/api/auth/request-otp", {
+        method: "POST",
+        // Account already exists at this point (request-otp is idempotent for an
+        // existing email) — the username value here is ignored server-side.
+        body: JSON.stringify({ email, username: "resend" }),
+      }),
     onSuccess: () => Alert.alert("Code sent", `A new code was sent to ${email}`),
     onError: (error: Error) => Alert.alert("Could not resend code", error.message),
   });

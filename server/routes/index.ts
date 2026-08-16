@@ -5,6 +5,7 @@ import { mealPlannerRouter } from "./mealPlanner";
 import { groceryRouter } from "./grocery";
 import { pantryRouter } from "./pantry";
 import { remindersRouter } from "./reminders";
+import { authRouter } from "./auth";
 import { uploadRouter } from "./upload";
 import { requireAuth } from "../middleware/requireAuth";
 
@@ -13,9 +14,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok" });
   });
 
-  // Login itself happens against FinanceTracker (shared identity across
-  // FinanceTracker/KitchenPlanner/Milo — see project notes); this backend only verifies
-  // the resulting token. Every route below requires it.
+  app.use("/api/auth", authRouter);
+
+  // KitchenPlanner has its own independent account again (each app in the suite manages
+  // its own login/branding) — every data route requires it.
   app.use("/api/recipes", requireAuth, recipesRouter);
   app.use("/api/meal-plan", requireAuth, mealPlannerRouter);
   app.use("/api/grocery", requireAuth, groceryRouter);
