@@ -8,6 +8,7 @@ Tracking the changes requested from this round of app testing.
 - [x] Tapping it opens a selection sheet listing unchecked ("to buy") items, all pre-selected, individually toggleable
 - [x] **Share** action opens the native OS share sheet (works with WhatsApp or any other app)
 - [x] **Copy** action copies the same list to the clipboard (`expo-clipboard` dependency added) for pasting anywhere
+- [x] Copy confirmation is inline (button swaps to "Copied" with a green checkmark-circle icon for the rest of the modal session) rather than a popup alert, per follow-up feedback
 - [x] Verified: `npx tsc --noEmit` passes in `mobile/`
 
 ## 2. Grocery → Pantry with purchase details
@@ -52,7 +53,8 @@ Reported from a screenshot: on the "Enter your email" screen, the keyboard cover
 - [x] Fixed both screens: `behavior={Platform.OS === "ios" ? "padding" : "height"}`
 - [x] `npx tsc --noEmit` passes
 - [x] Rebuilt the APK and copied to `C:\Users\kgd122\Downloads\KitchenPlanner.apk`
-- [ ] Only these two screens use `KeyboardAvoidingView` at all — no other screen was touched. If the same edge-to-edge/`adjustResize` issue shows up on another screen with inputs near the bottom (Grocery add row, Recipe editor, Reminders), it'd need the same treatment — not checked yet.
+- [x] **Add/Edit Recipe screen hit the same issue** (reported separately): it already used a `ScrollView` but had no `KeyboardAvoidingView` around it, so scrolling couldn't reveal fields near the bottom (Notes, Save) once the keyboard was up. Wrapped it in `KeyboardAvoidingView` (`behavior="height"` on Android) plus `keyboardShouldPersistTaps="handled"` on the ScrollView so taps on chips/buttons aren't swallowed while the keyboard is dismissing.
+- [ ] Checked the remaining screens with text inputs: `RecipesScreen`'s search bar and `SlotEditorScreen`'s recipe-search are both at the *top* of their screen (low risk — input itself stays visible, only list content below is covered). `SlotEditorScreen`'s note mode and `RemindersScreen`'s inline add-form weren't confirmed broken but weren't ruled out either — not touched since neither was reported. Flag if either turns out to have the same problem.
 
 ## Pending / not done yet
 

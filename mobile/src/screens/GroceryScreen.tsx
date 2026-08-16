@@ -9,6 +9,8 @@ import type { GroceryItem, PantryItem, FromPlanResult, GroceryCategory, MoveToPa
 import { GROCERY_CATEGORIES } from "../lib/types";
 import { useColors, radii, spacing, type, type ThemeColors } from "../theme";
 
+const COPIED_GREEN = "#22C55E";
+
 const CATEGORY_ICON: Record<GroceryCategory, keyof typeof Ionicons.glyphMap> = {
   Produce: "leaf-outline",
   "Dairy & Eggs": "egg-outline",
@@ -189,6 +191,12 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
 
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedShareIds, setSelectedShareIds] = useState<Set<number>>(new Set());
+  const [copied, setCopied] = useState(false);
+
+  function closeShareModal() {
+    setShareModalVisible(false);
+    setCopied(false);
+  }
 
   function openShareModal() {
     if (unchecked.length === 0) {
@@ -196,10 +204,12 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
       return;
     }
     setSelectedShareIds(new Set(unchecked.map((i: GroceryItem) => i.id)));
+    setCopied(false);
     setShareModalVisible(true);
   }
 
   function toggleShareSelected(id: number) {
+    setCopied(false);
     setSelectedShareIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -228,7 +238,7 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
       return;
     }
     await Clipboard.setStringAsync(buildShareText());
-    Alert.alert("Copied", "Grocery list copied to clipboard.");
+    setCopied(true);
   }
 
   const sections = useMemo(() => {
@@ -378,7 +388,7 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
         </View>
       </Modal>
 
-      <Modal visible={shareModalVisible} transparent animationType="fade" onRequestClose={() => setShareModalVisible(false)}>
+      <Modal visible={shareModalVisible} transparent animationType="fade" onRequestClose={closeShareModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Share list</Text>
@@ -407,15 +417,15 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalSkipButton} onPress={handleCopy}>
-                <Ionicons name="copy-outline" size={16} color={colors.textSecondary} />
-                <Text style={styles.modalSkipText}>Copy</Text>
+                <Ionicons name={copied ? "checkmark-circle" : "copy-outline"} size={16} color={copied ? COPIED_GREEN : colors.textSecondary} />
+                <Text style={[styles.modalSkipText, copied && { color: COPIED_GREEN }]}>{copied ? "Copied" : "Copy"}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSaveButton} onPress={handleShare}>
                 <Ionicons name="share-social-outline" size={16} color={colors.white} />
                 <Text style={styles.modalSaveText}>Share</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.modalCloseText} onPress={() => setShareModalVisible(false)}>
+            <TouchableOpacity style={styles.modalCloseText} onPress={closeShareModal}>
               <Text style={styles.detailsToggleText}>Close</Text>
             </TouchableOpacity>
           </View>

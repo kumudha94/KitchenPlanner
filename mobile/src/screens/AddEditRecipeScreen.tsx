@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -149,7 +149,8 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
       <TouchableOpacity style={styles.photoHero} activeOpacity={0.8} onPress={pickAndUploadImage} disabled={isUploadingImage}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.photoHeroImage} />
@@ -301,7 +302,8 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
           <Text style={styles.deleteButtonText}>Delete Recipe</Text>
         </TouchableOpacity>
       )}
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
