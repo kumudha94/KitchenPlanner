@@ -55,6 +55,9 @@ export async function ensureSchema(): Promise<void> {
       created_at timestamp NOT NULL DEFAULT now()
     )
   `);
+  await pool.query(`ALTER TABLE pantry_items ADD COLUMN IF NOT EXISTS quantity varchar(50)`);
+  await pool.query(`ALTER TABLE pantry_items ADD COLUMN IF NOT EXISTS cost numeric(10, 2)`);
+  await pool.query(`ALTER TABLE pantry_items ADD COLUMN IF NOT EXISTS expiry_date varchar(10)`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS reminders (

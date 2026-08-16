@@ -6,11 +6,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#7C3AED",
-    "icon": "./assets/splash-icon.png",
+    "icon": "./assets/icon-source.png",
     "android": {
       "package": "com.kitchenplanner.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/splash-icon.png",
+        "foregroundImage": "./assets/icon-source.png",
         "backgroundColor": "#7C3AED"
       }
     },

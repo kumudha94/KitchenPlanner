@@ -1,5 +1,13 @@
 import { db } from "../db";
-import { groceryItems, mealPlanEntries, pantryItems, recipes, type GroceryItem, type InsertGroceryItem } from "@shared/schema";
+import {
+  groceryItems,
+  mealPlanEntries,
+  pantryItems,
+  recipes,
+  type GroceryItem,
+  type InsertGroceryItem,
+  type PantryItem,
+} from "@shared/schema";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { categorizeItem } from "../lib/groceryCategorize";
 import { mergeIngredientQuantities, scaleQuantity } from "../lib/quantityScale";
@@ -19,6 +27,32 @@ export async function addItem(data: InsertGroceryItem): Promise<GroceryItem> {
 export async function setChecked(id: number, checked: boolean): Promise<GroceryItem | undefined> {
   const [item] = await db.update(groceryItems).set({ checked }).where(eq(groceryItems.id, id)).returning();
   return item;
+}
+
+export type MoveToPantryInput = { quantity?: string | null; cost?: number | null; expiryDate?: string | null };
+
+// Purchased items graduate from the shopping list straight into the pantry:
+// the grocery row is gone once it's tracked as pantry stock, rather than
+// lingering "checked" until a manual Clear.
+export async function moveToPantry(id: number, data: MoveToPantryInput): Promise<PantryItem | undefined> {
+  return db.transaction(async (tx) => {
+    const [groceryItem] = await tx.select().from(groceryItems).where(eq(groceryItems.id, id));
+    if (!groceryItem) return undefined;
+
+    const [pantryItem] = await tx
+      .insert(pantryItems)
+      .values({
+        name: groceryItem.name,
+        category: groceryItem.category,
+        quantity: data.quantity ?? groceryItem.quantity ?? null,
+        cost: data.cost != null ? String(data.cost) : null,
+        expiryDate: data.expiryDate ?? null,
+      })
+      .returning();
+
+    await tx.delete(groceryItems).where(eq(groceryItems.id, id));
+    return pantryItem;
+  });
 }
 
 export async function deleteItem(id: number): Promise<boolean> {

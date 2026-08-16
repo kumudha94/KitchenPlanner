@@ -68,6 +68,38 @@ groceryRouter.patch(
   })
 );
 
+const moveToPantrySchema = z.object({
+  quantity: z.string().trim().min(1).nullable().optional(),
+  cost: z.number().nonnegative().nullable().optional(),
+  expiryDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expiryDate must be YYYY-MM-DD")
+    .nullable()
+    .optional(),
+});
+
+groceryRouter.post(
+  "/:id/move-to-pantry",
+  wrap(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: "Invalid item id" });
+      return;
+    }
+    const parsed = moveToPantrySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: zodErrorMessage(parsed.error) });
+      return;
+    }
+    const pantryItem = await groceryStorage.moveToPantry(id, parsed.data);
+    if (!pantryItem) {
+      res.status(404).json({ error: "Item not found" });
+      return;
+    }
+    res.status(201).json(pantryItem);
+  })
+);
+
 groceryRouter.delete(
   "/checked",
   wrap(async (_req, res) => {

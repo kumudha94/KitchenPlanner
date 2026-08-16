@@ -67,8 +67,13 @@ export type PantryItem = {
   id: number;
   name: string;
   category: GroceryCategory;
+  quantity: string | null;
+  cost: string | null;
+  expiryDate: string | null;
   createdAt: string;
 };
+
+export type MoveToPantryInput = { quantity?: string | null; cost?: number | null; expiryDate?: string | null };
 
 export type Reminder = {
   id: number;

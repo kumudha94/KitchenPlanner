@@ -38,7 +38,7 @@ export default function EmailEntryScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <View style={styles.hero}>
         <View style={styles.iconCircle}>
           <Ionicons name="restaurant" size={32} color={colors.accent} />

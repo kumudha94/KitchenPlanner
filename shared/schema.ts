@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, serial, varchar, text, timestamp, jsonb, integer, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, jsonb, integer, numeric, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -102,12 +102,22 @@ export const pantryItems = pgTable("pantry_items", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 150 }).notNull(),
   category: varchar("category", { length: 40 }).notNull().default("Other"),
+  quantity: varchar("quantity", { length: 50 }),
+  cost: numeric("cost", { precision: 10, scale: 2 }),
+  expiryDate: varchar("expiry_date", { length: 10 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const insertPantryItemSchema = z.object({
   name: z.string().min(1, "Item name is required"),
   category: z.enum(GROCERY_CATEGORIES).optional(),
+  quantity: z.string().trim().min(1).nullable().optional(),
+  cost: z.number().nonnegative().nullable().optional(),
+  expiryDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expiryDate must be YYYY-MM-DD")
+    .nullable()
+    .optional(),
 });
 
 export type InsertPantryItem = z.infer<typeof insertPantryItemSchema>;

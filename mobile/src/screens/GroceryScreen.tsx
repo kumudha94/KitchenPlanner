@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, SectionList, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, SectionList, StyleSheet, Alert, Modal, Share, ScrollView } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addDays, format, startOfWeek } from "date-fns";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { apiRequest } from "../lib/api";
-import type { GroceryItem, PantryItem, FromPlanResult, GroceryCategory } from "../lib/types";
+import type { GroceryItem, PantryItem, FromPlanResult, GroceryCategory, MoveToPantryInput } from "../lib/types";
 import { GROCERY_CATEGORIES } from "../lib/types";
 import { useColors, radii, spacing, type, type ThemeColors } from "../theme";
 
@@ -87,6 +88,65 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["grocery"] }),
   });
 
+  const [pantryModalItem, setPantryModalItem] = useState<GroceryItem | null>(null);
+  const [moveQty, setMoveQty] = useState("");
+  const [moveCost, setMoveCost] = useState("");
+  const [moveExpiry, setMoveExpiry] = useState("");
+
+  function closePantryModal() {
+    setPantryModalItem(null);
+    setMoveQty("");
+    setMoveCost("");
+    setMoveExpiry("");
+  }
+
+  const moveToPantryMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: MoveToPantryInput }) =>
+      apiRequest<PantryItem>(`/api/grocery/${id}/move-to-pantry`, { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["grocery"] });
+      queryClient.invalidateQueries({ queryKey: ["pantry"] });
+      closePantryModal();
+    },
+    onError: (error: Error) => Alert.alert("Could not move to pantry", error.message),
+  });
+
+  function handleCheckboxPress(item: GroceryItem) {
+    if (item.checked) {
+      toggleMutation.mutate({ id: item.id, checked: false });
+      return;
+    }
+    setMoveQty(item.quantity ?? "");
+    setPantryModalItem(item);
+  }
+
+  function handleSkip() {
+    if (!pantryModalItem) return;
+    toggleMutation.mutate({ id: pantryModalItem.id, checked: true });
+    closePantryModal();
+  }
+
+  function handleSaveToPantry() {
+    if (!pantryModalItem) return;
+    if (moveExpiry && !/^\d{4}-\d{2}-\d{2}$/.test(moveExpiry)) {
+      Alert.alert("Invalid date", "Expiry date must be in YYYY-MM-DD format");
+      return;
+    }
+    const cost = moveCost.trim() ? Number(moveCost) : null;
+    if (moveCost.trim() && (cost === null || Number.isNaN(cost))) {
+      Alert.alert("Invalid cost", "Cost must be a number");
+      return;
+    }
+    moveToPantryMutation.mutate({
+      id: pantryModalItem.id,
+      data: {
+        quantity: moveQty.trim() || null,
+        cost,
+        expiryDate: moveExpiry.trim() || null,
+      },
+    });
+  }
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest<void>(`/api/grocery/${id}`, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["grocery"] }),
@@ -125,8 +185,53 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
     addMutation.mutate();
   }
 
+  const unchecked = useMemo(() => (items ?? []).filter((i: GroceryItem) => !i.checked), [items]);
+
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [selectedShareIds, setSelectedShareIds] = useState<Set<number>>(new Set());
+
+  function openShareModal() {
+    if (unchecked.length === 0) {
+      Alert.alert("Nothing to share", "Your list has no items left to buy.");
+      return;
+    }
+    setSelectedShareIds(new Set(unchecked.map((i: GroceryItem) => i.id)));
+    setShareModalVisible(true);
+  }
+
+  function toggleShareSelected(id: number) {
+    setSelectedShareIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function buildShareText(): string {
+    const selected = unchecked.filter((i: GroceryItem) => selectedShareIds.has(i.id));
+    const lines = selected.map((i: GroceryItem) => `- ${i.name}${i.quantity ? ` (${i.quantity})` : ""}`);
+    return `🛒 Grocery List\n${lines.join("\n")}`;
+  }
+
+  async function handleShare() {
+    if (selectedShareIds.size === 0) {
+      Alert.alert("Nothing selected", "Select at least one item to share.");
+      return;
+    }
+    await Share.share({ message: buildShareText() });
+  }
+
+  async function handleCopy() {
+    if (selectedShareIds.size === 0) {
+      Alert.alert("Nothing selected", "Select at least one item to copy.");
+      return;
+    }
+    await Clipboard.setStringAsync(buildShareText());
+    Alert.alert("Copied", "Grocery list copied to clipboard.");
+  }
+
   const sections = useMemo(() => {
-    const unchecked = (items ?? []).filter((i: GroceryItem) => !i.checked);
     const checked = (items ?? []).filter((i: GroceryItem) => i.checked);
     const bySections: { title: string; data: GroceryItem[] }[] = GROCERY_CATEGORIES.map((category) => ({
       title: category as string,
@@ -138,17 +243,22 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
 
   return (
     <>
-      <TouchableOpacity
-        style={styles.planButton}
-        activeOpacity={0.85}
-        onPress={() => fromPlanMutation.mutate()}
-        disabled={fromPlanMutation.isPending}
-      >
-        <Ionicons name="sparkles" size={16} color={colors.white} />
-        <Text style={styles.planButtonText}>
-          {fromPlanMutation.isPending ? "Working it out…" : "Smart list from this week's plan"}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.planRow}>
+        <TouchableOpacity
+          style={[styles.planButton, { flex: 1 }]}
+          activeOpacity={0.85}
+          onPress={() => fromPlanMutation.mutate()}
+          disabled={fromPlanMutation.isPending}
+        >
+          <Ionicons name="sparkles" size={16} color={colors.white} />
+          <Text style={styles.planButtonText}>
+            {fromPlanMutation.isPending ? "Working it out…" : "Smart list from this week's plan"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.shareIconButton} onPress={openShareModal}>
+          <Ionicons name="share-social-outline" size={18} color={colors.white} />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.addRow}>
         <TextInput
@@ -204,7 +314,7 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
             <View style={styles.itemRow}>
               <TouchableOpacity
                 style={[styles.checkbox, item.checked && styles.checkboxChecked]}
-                onPress={() => toggleMutation.mutate({ id: item.id, checked: !item.checked })}
+                onPress={() => handleCheckboxPress(item)}
               >
                 {item.checked ? <Ionicons name="checkmark" size={14} color={colors.white} /> : null}
               </TouchableOpacity>
@@ -219,6 +329,98 @@ function ShoppingView({ colors, styles, queryClient }: SharedProps) {
           )}
         />
       )}
+
+      <Modal visible={!!pantryModalItem} transparent animationType="fade" onRequestClose={closePantryModal}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Add to Pantry</Text>
+            <Text style={styles.modalSubtitle}>{pantryModalItem?.name}</Text>
+
+            <Text style={styles.modalLabel}>Quantity</Text>
+            <TextInput
+              style={styles.input}
+              value={moveQty}
+              onChangeText={setMoveQty}
+              placeholder="e.g. 2kg"
+              placeholderTextColor={colors.textMuted}
+            />
+            <Text style={styles.modalLabel}>Cost</Text>
+            <TextInput
+              style={styles.input}
+              value={moveCost}
+              onChangeText={setMoveCost}
+              placeholder="e.g. 4.50"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="decimal-pad"
+            />
+            <Text style={styles.modalLabel}>Expiry date</Text>
+            <TextInput
+              style={styles.input}
+              value={moveExpiry}
+              onChangeText={setMoveExpiry}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.textMuted}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalSkipButton} onPress={handleSkip}>
+                <Text style={styles.modalSkipText}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSaveButton}
+                onPress={handleSaveToPantry}
+                disabled={moveToPantryMutation.isPending}
+              >
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={shareModalVisible} transparent animationType="fade" onRequestClose={() => setShareModalVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Share list</Text>
+            <Text style={styles.modalSubtitle}>Choose what to include</Text>
+
+            <ScrollView style={styles.shareList}>
+              {unchecked.map((item: GroceryItem) => {
+                const isSelected = selectedShareIds.has(item.id);
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.shareItemRow}
+                    onPress={() => toggleShareSelected(item.id)}
+                  >
+                    <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+                      {isSelected ? <Ionicons name="checkmark" size={14} color={colors.white} /> : null}
+                    </View>
+                    <Text style={styles.itemName}>
+                      {item.name}
+                      {item.quantity ? ` (${item.quantity})` : ""}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalSkipButton} onPress={handleCopy}>
+                <Ionicons name="copy-outline" size={16} color={colors.textSecondary} />
+                <Text style={styles.modalSkipText}>Copy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSaveButton} onPress={handleShare}>
+                <Ionicons name="share-social-outline" size={16} color={colors.white} />
+                <Text style={styles.modalSaveText}>Share</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.modalCloseText} onPress={() => setShareModalVisible(false)}>
+              <Text style={styles.detailsToggleText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -230,12 +432,31 @@ function PantryView({ colors, styles, queryClient }: SharedProps) {
   });
 
   const [name, setName] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
+  const [detailQty, setDetailQty] = useState("");
+  const [detailCost, setDetailCost] = useState("");
+  const [detailExpiry, setDetailExpiry] = useState("");
 
   const addMutation = useMutation({
-    mutationFn: () => apiRequest<PantryItem>("/api/pantry", { method: "POST", body: JSON.stringify({ name: name.trim() }) }),
+    mutationFn: () => {
+      const cost = detailCost.trim() ? Number(detailCost) : null;
+      return apiRequest<PantryItem>("/api/pantry", {
+        method: "POST",
+        body: JSON.stringify({
+          name: name.trim(),
+          quantity: detailQty.trim() || null,
+          cost,
+          expiryDate: detailExpiry.trim() || null,
+        }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pantry"] });
       setName("");
+      setDetailQty("");
+      setDetailCost("");
+      setDetailExpiry("");
+      setShowDetails(false);
     },
     onError: (error: Error) => Alert.alert("Could not add item", error.message),
   });
@@ -248,6 +469,14 @@ function PantryView({ colors, styles, queryClient }: SharedProps) {
   function handleAdd() {
     if (!name.trim()) {
       Alert.alert("Add at least an item name to add it to your pantry");
+      return;
+    }
+    if (detailExpiry.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(detailExpiry.trim())) {
+      Alert.alert("Invalid date", "Expiry date must be in YYYY-MM-DD format");
+      return;
+    }
+    if (detailCost.trim() && Number.isNaN(Number(detailCost))) {
+      Alert.alert("Invalid cost", "Cost must be a number");
       return;
     }
     addMutation.mutate();
@@ -278,6 +507,38 @@ function PantryView({ colors, styles, queryClient }: SharedProps) {
         </TouchableOpacity>
       </View>
 
+      <TouchableOpacity style={styles.detailsToggle} onPress={() => setShowDetails((v) => !v)}>
+        <Ionicons name={showDetails ? "chevron-up" : "chevron-down"} size={13} color={colors.textSecondary} />
+        <Text style={styles.detailsToggleText}>{showDetails ? "Hide details" : "Add quantity, cost, expiry…"}</Text>
+      </TouchableOpacity>
+
+      {showDetails ? (
+        <View style={styles.addRow}>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={detailQty}
+            onChangeText={setDetailQty}
+            placeholder="Qty"
+            placeholderTextColor={colors.textMuted}
+          />
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={detailCost}
+            onChangeText={setDetailCost}
+            placeholder="Cost"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="decimal-pad"
+          />
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={detailExpiry}
+            onChangeText={setDetailExpiry}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.textMuted}
+          />
+        </View>
+      ) : null}
+
       {isLoading ? (
         <Text style={styles.loadingText}>Loading…</Text>
       ) : (
@@ -298,16 +559,24 @@ function PantryView({ colors, styles, queryClient }: SharedProps) {
               <Text style={styles.sectionHeaderText}>{section.title.toUpperCase()}</Text>
             </View>
           )}
-          renderItem={({ item }) => (
-            <View style={styles.itemRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemName}>{item.name}</Text>
+          renderItem={({ item }) => {
+            const detailParts = [
+              item.quantity,
+              item.cost != null ? `$${Number(item.cost).toFixed(2)}` : null,
+              item.expiryDate ? `exp ${item.expiryDate}` : null,
+            ].filter(Boolean);
+            return (
+              <View style={styles.itemRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemName}>{item.name}</Text>
+                  {detailParts.length > 0 ? <Text style={styles.itemQuantity}>{detailParts.join(" · ")}</Text> : null}
+                </View>
+                <TouchableOpacity onPress={() => deleteMutation.mutate(item.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => deleteMutation.mutate(item.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="close" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-          )}
+            );
+          }}
         />
       )}
     </>
@@ -335,9 +604,16 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.accent,
       borderRadius: radii.sm,
       paddingVertical: 12,
-      marginBottom: spacing.md,
     },
     planButtonText: { color: colors.white, fontWeight: "700", fontSize: 14 },
+    planRow: { flexDirection: "row", gap: 8, marginBottom: spacing.md },
+    shareIconButton: {
+      width: 42,
+      borderRadius: radii.sm,
+      backgroundColor: colors.accent,
+      justifyContent: "center",
+      alignItems: "center",
+    },
 
     addRow: { flexDirection: "row", gap: 8, marginBottom: spacing.md },
     input: {
@@ -393,4 +669,41 @@ const makeStyles = (colors: ThemeColors) =>
     itemName: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
     itemNameChecked: { textDecorationLine: "line-through", color: colors.textMuted },
     itemQuantity: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
+
+    detailsToggle: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: spacing.sm },
+    detailsToggleText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+
+    modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", padding: spacing.lg },
+    modalCard: { backgroundColor: colors.surface, borderRadius: radii.sm, padding: spacing.lg, gap: 4 },
+    modalTitle: { ...type.title, color: colors.textPrimary },
+    modalSubtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: spacing.sm },
+    modalLabel: { fontSize: 12, fontWeight: "700", color: colors.textMuted, marginTop: spacing.sm, marginBottom: 4 },
+    modalActions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
+    modalSkipButton: {
+      flex: 1,
+      flexDirection: "row",
+      gap: 6,
+      borderRadius: radii.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalSkipText: { fontSize: 14, fontWeight: "700", color: colors.textSecondary },
+    modalSaveButton: {
+      flex: 1,
+      flexDirection: "row",
+      gap: 6,
+      borderRadius: radii.sm,
+      backgroundColor: colors.accent,
+      paddingVertical: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalSaveText: { fontSize: 14, fontWeight: "700", color: colors.white },
+    modalCloseText: { alignItems: "center", marginTop: spacing.sm },
+
+    shareList: { maxHeight: 320, marginTop: spacing.sm },
+    shareItemRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: 8 },
   });

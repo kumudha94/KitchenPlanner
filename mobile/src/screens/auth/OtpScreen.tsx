@@ -48,7 +48,7 @@ export default function OtpScreen({ route }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <Text style={styles.title}>Check your email</Text>
       <Text style={styles.subtitle}>Enter the 6-digit code we sent to {email}</Text>
 

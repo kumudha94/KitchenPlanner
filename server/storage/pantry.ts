@@ -10,7 +10,13 @@ export async function listItems(): Promise<PantryItem[]> {
 export async function addItem(data: InsertPantryItem): Promise<PantryItem> {
   const [item] = await db
     .insert(pantryItems)
-    .values({ name: data.name, category: data.category ?? categorizeItem(data.name) })
+    .values({
+      name: data.name,
+      category: data.category ?? categorizeItem(data.name),
+      quantity: data.quantity ?? null,
+      cost: data.cost != null ? String(data.cost) : null,
+      expiryDate: data.expiryDate ?? null,
+    })
     .returning();
   return item;
 }
