@@ -6,6 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { apiRequest } from "../lib/api";
 import { uploadImage } from "../lib/upload";
+import { parseRecipeScreenshot } from "../lib/recipeImport";
 import type { InsertRecipe, Recipe, RecipeIngredient, MealType } from "../lib/types";
 import type { RecipesStackParamList } from "../../App";
 import { useColors, radii, spacing, type ThemeColors } from "../theme";
@@ -37,6 +38,7 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
   const [tagDraft, setTagDraft] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isImportingScreenshot, setIsImportingScreenshot] = useState(false);
 
   useEffect(() => {
     if (existing) {
@@ -148,6 +150,38 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
     }
   }
 
+  async function pickAndImportScreenshot() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission needed", "Allow photo library access to import a recipe screenshot.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.9,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    setIsImportingScreenshot(true);
+    try {
+      const fileName = asset.fileName || `screenshot-${Date.now()}.jpg`;
+      const mimeType = asset.mimeType || "image/jpeg";
+      const parsed = await parseRecipeScreenshot(asset.uri, fileName, mimeType);
+      setName(parsed.name);
+      setServings(String(parsed.servings > 0 ? parsed.servings : 4));
+      setPrepTime(parsed.prepTimeMinutes > 0 ? String(parsed.prepTimeMinutes) : "");
+      setIngredients(parsed.ingredients.length ? parsed.ingredients : [{ name: "", quantity: "" }]);
+      setNotes(parsed.notes);
+      setTags(parsed.tags);
+    } catch (error) {
+      Alert.alert("Could not import recipe", error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setIsImportingScreenshot(false);
+    }
+  }
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
@@ -167,6 +201,21 @@ export default function AddEditRecipeScreen({ route, navigation }: Props) {
           )}
           <Text style={styles.photoHeroButtonText}>{imageUrl ? "Change photo" : "Add photo"}</Text>
         </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.importButton}
+        onPress={pickAndImportScreenshot}
+        disabled={isImportingScreenshot}
+      >
+        {isImportingScreenshot ? (
+          <ActivityIndicator size="small" color={colors.accent} />
+        ) : (
+          <Ionicons name="sparkles-outline" size={18} color={colors.accent} />
+        )}
+        <Text style={styles.importButtonText}>
+          {isImportingScreenshot ? "Reading screenshot..." : "Import from screenshot"}
+        </Text>
       </TouchableOpacity>
 
       <Text style={styles.label}>Name</Text>
@@ -387,6 +436,18 @@ const makeStyles = (colors: ThemeColors) =>
     borderRadius: radii.full,
   },
   photoHeroButtonText: { color: colors.white, fontSize: 12, fontWeight: "700" },
+  importButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radii.sm,
+    paddingVertical: 12,
+    marginBottom: spacing.sm,
+  },
+  importButtonText: { color: colors.accent, fontWeight: "700", fontSize: 14 },
   ingredientRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   addRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
   addRowText: { color: colors.accent, marginLeft: 6, fontSize: 14, fontWeight: "600" },

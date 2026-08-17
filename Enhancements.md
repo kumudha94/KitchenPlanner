@@ -44,6 +44,7 @@ Triggered by Expo Go (SDK 54 installed on-device) refusing to open the SDK 52 pr
 - [ ] **Edge-to-edge is now mandatory on Android** (SDK 54 change, can't be disabled) — only `PlannerScreen.tsx` currently uses `react-native-safe-area-context`'s insets; other screens haven't been checked for content sitting under the status/nav bar. Worth a visual pass once you're back on-device.
 - [ ] Didn't start my own `expo start` — you already had one running (port 8081, the same terminal that showed the original error). **Restart that terminal** (Ctrl+C, re-run) so it picks up the new `node_modules`; Expo Go should then match SDK 54 and connect normally.
 - [x] Rebuilt the sideloaded APK against the SDK 54 native project (`cd mobile/android && ./gradlew assembleRelease`, build succeeded in 5m 7s) and copied it to `C:\Users\kgd122\Downloads\KitchenPlanner.apk` — includes the new icon, pantry-move flow, and WhatsApp share, all on SDK 54
+- [x] Rebuilt again after the keyboard fixes (email/OTP screens item 5, Add/Edit Recipe screen above) — same path, `C:\Users\kgd122\Downloads\KitchenPlanner.apk`, build succeeded in 1m 11s
 
 ## 5. Keyboard hiding the email field (sign-in screen)
 
