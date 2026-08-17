@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#7C3AED",
+    "newArchEnabled": false,
     "icon": "./assets/icon-source.png",
     "android": {
       "package": "com.kitchenplanner.app",
