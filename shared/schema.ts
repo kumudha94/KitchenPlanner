@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, serial, varchar, text, timestamp, jsonb, integer, numeric, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, jsonb, integer, numeric, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -63,7 +63,7 @@ export const mealPlanEntries = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    dateSlotIdx: uniqueIndex("meal_plan_date_slot_idx").on(table.date, table.slot),
+    dateSlotIdx: index("meal_plan_date_slot_idx").on(table.date, table.slot),
   })
 );
 

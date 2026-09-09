@@ -8,7 +8,7 @@ export const mealPlannerRouter = Router();
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
-const slotUpdateSchema = z.object({
+const newItemSchema = z.object({
   recipeId: z.number().nullable().optional(),
   note: z.string().nullable().optional(),
 });
@@ -34,7 +34,7 @@ mealPlannerRouter.get(
   })
 );
 
-mealPlannerRouter.put("/:date/:slot", async (req, res, next) => {
+mealPlannerRouter.post("/:date/:slot", async (req, res, next) => {
   if (!dateRegex.test(req.params.date)) {
     res.status(400).json({ error: "date must be YYYY-MM-DD" });
     return;
@@ -44,9 +44,9 @@ mealPlannerRouter.put("/:date/:slot", async (req, res, next) => {
     return;
   }
   try {
-    const update = slotUpdateSchema.parse(req.body);
-    const entry = await mealPlanStorage.upsertSlot(req.params.date, req.params.slot, update);
-    res.json(entry);
+    const item = newItemSchema.parse(req.body);
+    const entry = await mealPlanStorage.addItem(req.params.date, req.params.slot, item);
+    res.status(201).json(entry);
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: zodErrorMessage(error) });
@@ -55,6 +55,23 @@ mealPlannerRouter.put("/:date/:slot", async (req, res, next) => {
     next(error);
   }
 });
+
+mealPlannerRouter.delete(
+  "/item/:id",
+  wrap(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: "id must be an integer" });
+      return;
+    }
+    const deleted = await mealPlanStorage.removeItem(id);
+    if (!deleted) {
+      res.status(404).json({ error: "Item not found" });
+      return;
+    }
+    res.status(204).send();
+  })
+);
 
 mealPlannerRouter.delete(
   "/:date/:slot",

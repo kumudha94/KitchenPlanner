@@ -49,8 +49,8 @@ export default function PlannerScreen({ navigation }: Props) {
     queryFn: () => apiRequest<Recipe[]>("/api/recipes"),
   });
 
-  function entryFor(slot: MealSlot) {
-    return entries?.find((e: MealPlanEntry) => e.date === selectedDateStr && e.slot === slot);
+  function itemsFor(slot: MealSlot) {
+    return entries?.filter((e: MealPlanEntry) => e.date === selectedDateStr && e.slot === slot) ?? [];
   }
 
   function recipeFor(entry?: MealPlanEntry) {
@@ -143,10 +143,9 @@ export default function PlannerScreen({ navigation }: Props) {
       ) : (
         <View style={styles.slots}>
           {SLOTS.map((slot) => {
-            const entry = entryFor(slot);
-            const recipe = recipeFor(entry);
+            const items = itemsFor(slot);
             const meta = SLOT_META[slot];
-            const filled = !!(entry?.recipeNameSnapshot || entry?.note);
+            const filled = items.length > 0;
 
             return (
               <TouchableOpacity
@@ -156,14 +155,7 @@ export default function PlannerScreen({ navigation }: Props) {
                   styles.slotCard,
                   filled ? shadow : { backgroundColor: meta.color + "14", borderStyle: "dashed", borderWidth: 1.5, borderColor: meta.color + "55" },
                 ]}
-                onPress={() =>
-                  navigation.navigate("SlotEditor", {
-                    date: selectedDateStr,
-                    slot,
-                    recipeId: entry?.recipeId,
-                    note: entry?.note,
-                  })
-                }
+                onPress={() => navigation.navigate("SlotEditor", { date: selectedDateStr, slot })}
               >
                 <View style={styles.slotLabelRow}>
                   <Ionicons name={meta.icon} size={14} color={meta.color} />
@@ -171,33 +163,42 @@ export default function PlannerScreen({ navigation }: Props) {
                 </View>
 
                 {filled ? (
-                  <View style={styles.filledRow}>
-                    {recipe?.imageUrl ? (
-                      <Image source={{ uri: recipe.imageUrl }} style={styles.mealThumb} />
-                    ) : (
-                      <View style={[styles.mealThumb, styles.mealThumbFallback, { backgroundColor: meta.color + "22" }]}>
-                        <Ionicons name={meta.icon} size={18} color={meta.color} />
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.mealName} numberOfLines={1}>
-                        {entry?.recipeNameSnapshot || entry?.note}
-                      </Text>
-                      <View style={styles.mealMetaRow}>
-                        {recipe?.prepTimeMinutes ? (
-                          <View style={styles.metaChip}>
-                            <Ionicons name="time-outline" size={11} color={colors.textSecondary} />
-                            <Text style={styles.metaChipText}>{recipe.prepTimeMinutes} min</Text>
+                  <View style={{ gap: spacing.xs }}>
+                    {items.map((entry) => {
+                      const recipe = recipeFor(entry);
+                      return (
+                        <View key={entry.id} style={styles.filledRow}>
+                          {recipe?.imageUrl ? (
+                            <Image source={{ uri: recipe.imageUrl }} style={styles.mealThumb} />
+                          ) : (
+                            <View style={[styles.mealThumb, styles.mealThumbFallback, { backgroundColor: meta.color + "22" }]}>
+                              <Ionicons name={meta.icon} size={18} color={meta.color} />
+                            </View>
+                          )}
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.mealName} numberOfLines={1}>
+                              {entry.recipeNameSnapshot || entry.note}
+                            </Text>
+                            <View style={styles.mealMetaRow}>
+                              {recipe?.prepTimeMinutes ? (
+                                <View style={styles.metaChip}>
+                                  <Ionicons name="time-outline" size={11} color={colors.textSecondary} />
+                                  <Text style={styles.metaChipText}>{recipe.prepTimeMinutes} min</Text>
+                                </View>
+                              ) : null}
+                              {recipe?.tags.slice(0, 2).map((tag: string) => (
+                                <View key={tag} style={styles.metaChip}>
+                                  <Text style={styles.metaChipText}>{tag}</Text>
+                                </View>
+                              ))}
+                            </View>
                           </View>
-                        ) : null}
-                        {recipe?.tags.slice(0, 2).map((tag: string) => (
-                          <View key={tag} style={styles.metaChip}>
-                            <Text style={styles.metaChipText}>{tag}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                        </View>
+                      );
+                    })}
+                    <Text style={[styles.emptyText, { color: meta.color, textAlign: "left", paddingLeft: 2 }]}>
+                      + Add another
+                    </Text>
                   </View>
                 ) : (
                   <View style={styles.emptyRow}>

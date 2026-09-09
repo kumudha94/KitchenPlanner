@@ -89,7 +89,7 @@ export default function RecipesScreen({ navigation }: Props) {
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.filterRow}
-            contentContainerStyle={{ gap: 8, paddingHorizontal: spacing.md }}
+            contentContainerStyle={{ gap: 8, paddingHorizontal: spacing.md, alignItems: "center" }}
           >
             <TouchableOpacity
               style={[styles.filterChip, favoritesOnly && styles.filterChipActive]}
@@ -195,7 +195,10 @@ const makeStyles = (colors: ThemeColors) =>
   },
   searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
 
-  filterRow: { marginTop: spacing.sm, flexGrow: 0 },
+  // Horizontal ScrollView cross-axis height is otherwise unconstrained and
+  // resolved by a layout pass whose timing differs across renderers/devices
+  // — an explicit height makes it deterministic instead of racy.
+  filterRow: { marginTop: spacing.sm, height: 36, flexGrow: 0 },
   filterChip: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+*.log
+.expo
+mobile
+.git
+.claude
+docs
+Enhancements.md
+README.md

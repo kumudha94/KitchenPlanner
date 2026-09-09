@@ -22,8 +22,13 @@ const CATEGORIES: { key: MealType | "all"; label: string }[] = [
 export default function SlotEditorScreen({ route, navigation }: Props) {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { date, slot, note: initialNote } = route.params;
+  const { date, slot } = route.params;
   const queryClient = useQueryClient();
+
+  const { data: entries } = useQuery({
+    queryKey: ["meal-plan", date, date],
+    queryFn: () => apiRequest<MealPlanEntry[]>(`/api/meal-plan?start=${date}&end=${date}`),
+  });
 
   const { data: recipes } = useQuery({
     queryKey: ["recipes"],
@@ -35,26 +40,38 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
     queryFn: () => apiRequest<Recipe[]>("/api/recipes/recently-used?limit=8"),
   });
 
+  const currentItems = useMemo(
+    () => (entries ?? []).filter((e: MealPlanEntry) => e.date === date && e.slot === slot),
+    [entries, date, slot]
+  );
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<MealType | "all">(slot);
-  const [noteMode, setNoteMode] = useState(!!initialNote);
-  const [note, setNote] = useState(initialNote || "");
+  const [noteMode, setNoteMode] = useState(false);
+  const [note, setNote] = useState("");
 
   useEffect(() => {
     navigation.setOptions({ title: `${slot[0].toUpperCase()}${slot.slice(1)} · ${date}` });
   }, []);
 
-  const saveMutation = useMutation({
-    mutationFn: (recipeId: number | null) =>
+  const addMutation = useMutation({
+    mutationFn: (body: { recipeId?: number | null; note?: string | null }) =>
       apiRequest<MealPlanEntry>(`/api/meal-plan/${date}/${slot}`, {
-        method: "PUT",
-        body: JSON.stringify({ recipeId, note: recipeId ? null : note.trim() || null }),
+        method: "POST",
+        body: JSON.stringify(body),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["meal-plan"] });
-      navigation.goBack();
+      setNote("");
+      setNoteMode(false);
     },
-    onError: (error: Error) => Alert.alert("Could not save", error.message),
+    onError: (error: Error) => Alert.alert("Could not add", error.message),
+  });
+
+  const removeItemMutation = useMutation({
+    mutationFn: (id: number) => apiRequest<void>(`/api/meal-plan/item/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meal-plan"] }),
+    onError: (error: Error) => Alert.alert("Could not remove item", error.message),
   });
 
   const clearMutation = useMutation({
@@ -98,8 +115,12 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
           multiline
           autoFocus
         />
-        <TouchableOpacity style={styles.saveButton} onPress={() => saveMutation.mutate(null)} disabled={saveMutation.isPending}>
-          <Text style={styles.saveButtonText}>{saveMutation.isPending ? "Saving…" : "Save note"}</Text>
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={() => addMutation.mutate({ note: note.trim() || null })}
+          disabled={addMutation.isPending || !note.trim()}
+        >
+          <Text style={styles.saveButtonText}>{addMutation.isPending ? "Saving…" : "Save note"}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.linkButton} onPress={() => setNoteMode(false)}>
           <Text style={styles.linkButtonText}>Pick a recipe instead</Text>
@@ -110,6 +131,26 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {currentItems.length > 0 ? (
+        <View style={styles.currentItems}>
+          <Text style={styles.label}>Already in this slot</Text>
+          {currentItems.map((item) => (
+            <View key={item.id} style={styles.currentItemRow}>
+              <Text style={styles.currentItemText} numberOfLines={1}>
+                {item.recipeNameSnapshot || item.note}
+              </Text>
+              <TouchableOpacity
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={() => removeItemMutation.mutate(item.id)}
+                disabled={removeItemMutation.isPending}
+              >
+                <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {quickPicks.length > 0 && !search.trim() ? (
         <ScrollView
           horizontal
@@ -118,7 +159,7 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
           contentContainerStyle={{ gap: 10 }}
         >
           {quickPicks.map((r) => (
-            <TouchableOpacity key={r.id} style={styles.quickCard} onPress={() => saveMutation.mutate(r.id)}>
+            <TouchableOpacity key={r.id} style={styles.quickCard} onPress={() => addMutation.mutate({ recipeId: r.id })}>
               {r.imageUrl ? (
                 <Image source={{ uri: r.imageUrl }} style={styles.quickThumb} />
               ) : (
@@ -170,7 +211,7 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: spacing.lg }}
         renderItem={({ item }) => (
-          <RecipeCard recipe={item} elevated={false} onPress={() => saveMutation.mutate(item.id)} />
+          <RecipeCard recipe={item} elevated={false} onPress={() => addMutation.mutate({ recipeId: item.id })} />
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -190,7 +231,7 @@ export default function SlotEditorScreen({ route, navigation }: Props) {
         <TouchableOpacity
           style={styles.clearButton}
           onPress={() => clearMutation.mutate()}
-          disabled={clearMutation.isPending}
+          disabled={clearMutation.isPending || currentItems.length === 0}
         >
           <Text style={styles.clearButtonText}>{clearMutation.isPending ? "Clearing…" : "Clear this slot"}</Text>
         </TouchableOpacity>
@@ -203,6 +244,18 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
   label: { ...type.label, color: colors.textSecondary, marginBottom: spacing.sm },
+
+  currentItems: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  currentItemRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  currentItemText: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.textPrimary },
 
   quickRow: { marginBottom: spacing.md, flexGrow: 0 },
   quickCard: { width: 68, alignItems: "center" },
